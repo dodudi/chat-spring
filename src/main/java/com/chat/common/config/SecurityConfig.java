@@ -1,0 +1,62 @@
+package com.chat.common.config;
+
+import com.chat.common.ApiResponse;
+import com.chat.common.exception.ErrorCode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+
+import java.io.IOException;
+
+@Slf4j
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final String[] PUBLIC_PATHS = {
+            "/actuator/health",
+            "/actuator/info",
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
+    };
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> {})
+                        .authenticationEntryPoint((request, response, ex) -> {
+                            log.warn("[AUTH_FAIL] uri={}", request.getRequestURI());
+                            writeErrorResponse(response, ErrorCode.UNAUTHORIZED);
+                        })
+                        .accessDeniedHandler((request, response, ex) -> {
+                            log.warn("[ACCESS_DENIED] uri={}", request.getRequestURI());
+                            writeErrorResponse(response, ErrorCode.FORBIDDEN);
+                        }))
+                .build();
+    }
+
+    private static void writeErrorResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(errorCode.getHttpStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        OBJECT_MAPPER.writeValue(response.getWriter(), ApiResponse.fail(errorCode));
+    }
+}
