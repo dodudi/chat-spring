@@ -3,6 +3,7 @@ package com.chat.common.exception;
 import com.chat.common.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -32,6 +33,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.INVALID_INPUT.getHttpStatus())
                 .body(ApiResponse.fail(ErrorCode.INVALID_INPUT, message));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+        String msg = e.getMessage() != null ? e.getMessage() : "";
+        if (msg.contains("uidx_chat_rooms_dm")) {
+            log.warn("DataIntegrityViolationException: duplicate DM room");
+            return ResponseEntity
+                    .status(ErrorCode.DUPLICATE_DM_ROOM.getHttpStatus())
+                    .body(ApiResponse.fail(ErrorCode.DUPLICATE_DM_ROOM));
+        }
+        log.error("DataIntegrityViolationException: {}", msg, e);
+        return ResponseEntity
+                .status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus())
+                .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -101,6 +102,14 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("C003"));
     }
 
+    @Test
+    @WithMockUser
+    void DM방_중복_생성시_R003으로_응답() throws Exception {
+        mockMvc.perform(get("/test/duplicate-dm"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("R003"));
+    }
+
     @RestController
     @RequestMapping("/test")
     @Validated
@@ -119,6 +128,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/unexpected-exception")
         public ResponseEntity<ApiResponse<Void>> unexpectedException() {
             throw new RuntimeException("예상치 못한 오류");
+        }
+
+        @GetMapping("/duplicate-dm")
+        public ResponseEntity<ApiResponse<Void>> duplicateDm() {
+            throw new DataIntegrityViolationException("uidx_chat_rooms_dm constraint violation");
         }
 
         record TestRequest(@NotBlank String name) {}
