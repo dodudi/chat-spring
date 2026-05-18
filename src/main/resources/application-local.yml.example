@@ -21,11 +21,9 @@ spring:
         format_sql: true
     show-sql: true
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:9000
+app:
+  jwt:
+    local-secret: "local-dev-secret-key-must-be-32-chars!!"
 
 logging:
   level:
