@@ -1,0 +1,92 @@
+// chat-spring DB Schema
+// https://dbml.org
+
+Project chat_spring {
+  database_type: 'PostgreSQL'
+  Note: '''
+    OAuth2 Resource Server 기반 채팅 서비스.
+    users 테이블 없음 — user_id는 JWT subject (String/UUID).
+  '''
+}
+
+// ──────────────────────────────────────────
+// Enum
+// ──────────────────────────────────────────
+
+Enum room_type {
+  DM    [note: '1:1 다이렉트 메시지']
+  GROUP [note: '2인 이상 그룹 채팅']
+}
+
+Enum message_type {
+  TEXT  [note: '텍스트 메시지']
+  IMAGE [note: '이미지 첨부']
+  FILE  [note: '파일 첨부']
+}
+
+// ──────────────────────────────────────────
+// Tables
+// ──────────────────────────────────────────
+
+Table chat_rooms {
+  id         bigint      [pk, increment, note: 'GENERATED ALWAYS AS IDENTITY']
+  type       room_type   [not null]
+  name       varchar(100)               [note: 'GROUP 방 이름. DM은 NULL']
+  created_by varchar(255) [not null,    note: 'JWT subject']
+  dm_user_a  varchar(255)               [note: 'DM 참여자 — 두 user_id 중 사전순 작은 값. GROUP이면 NULL']
+  dm_user_b  varchar(255)               [note: 'DM 참여자 — 두 user_id 중 사전순 큰 값. GROUP이면 NULL']
+  created_at timestamptz [not null,     default: `now()`]
+  updated_at timestamptz [not null,     default: `now()`, note: '마지막 메시지 전송 시각 — 방 목록 정렬 기준']
+
+  indexes {
+    created_by                [name: 'idx_chat_rooms_created_by']
+    (dm_user_a, dm_user_b)   [unique, name: 'uidx_chat_rooms_dm',
+                               note: 'WHERE type = DM — DM 방 중복 생성 방지. 항상 정렬된 순서로 저장']
+  }
+
+  Note: '''
+    DM 중복 방지:
+      creatorId < targetId 이면 (creatorId → dm_user_a, targetId → dm_user_b)
+      creatorId > targetId 이면 (targetId → dm_user_a, creatorId → dm_user_b)
+    두 사용자 간 DM 방은 항상 동일한 (dm_user_a, dm_user_b) 조합을 가지므로 UNIQUE 인덱스로 중복 차단.
+  '''
+}
+
+Table chat_room_members {
+  id                   bigint       [pk, increment]
+  room_id              bigint       [not null, ref: > chat_rooms.id]
+  user_id              varchar(255) [not null, note: 'JWT subject']
+  joined_at            timestamptz  [not null, default: `now()`, note: '최초 입장 또는 재입장 시각']
+  last_read_message_id bigint                  [note: '마지막으로 읽은 메시지 ID — 읽음 처리 기준. FK 제약 없음']
+  is_active            boolean      [not null, default: true, note: 'false = 퇴장(GROUP) 또는 숨김(DM)']
+  created_at           timestamptz  [not null, default: `now()`]
+  updated_at           timestamptz  [not null, default: `now()`]
+
+  indexes {
+    room_id          [name: 'idx_members_room_id']
+    user_id          [name: 'idx_members_user_id']
+    (room_id, user_id) [unique, name: 'uidx_members_room_user', note: '한 사용자의 동일 방 중복 가입 방지']
+  }
+}
+
+Table messages {
+  id         bigint       [pk, increment]
+  room_id    bigint       [not null, ref: > chat_rooms.id]
+  sender_id  varchar(255) [not null, note: 'JWT subject']
+  content    text         [not null]
+  type       message_type [not null, default: 'TEXT']
+  deleted_at timestamptz  [note: 'NULL = 정상 / NOT NULL = soft delete. 조회 시 자동 제외 (@SQLRestriction)']
+  created_at timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (room_id, created_at) [name: 'idx_messages_room_created',
+                           note: 'DESC 정렬 — 커서 기반 페이징 (before={messageId}&size=50)']
+    sender_id             [name: 'idx_messages_sender_id']
+  }
+
+  Note: '''
+    메시지 삭제는 soft delete (deleted_at 설정).
+    물리 삭제(DELETE) 사용 안 함.
+    updated_at 없음 — 메시지 내용은 수정 불가.
+  '''
+}
