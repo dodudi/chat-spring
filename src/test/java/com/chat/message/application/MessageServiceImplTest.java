@@ -5,7 +5,9 @@ import com.chat.common.exception.ErrorCode;
 import com.chat.message.domain.Message;
 import com.chat.message.dto.MessageCursorResponse;
 import com.chat.message.infrastructure.MessageRepository;
+import com.chat.room.domain.ChatRoomMember;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
+import com.chat.room.infrastructure.ChatRoomRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,7 @@ class MessageServiceImplTest {
 
     @Mock MessageRepository messageRepository;
     @Mock ChatRoomMemberRepository chatRoomMemberRepository;
+    @Mock ChatRoomRepository chatRoomRepository;
     @Mock EntityManager entityManager;
     @InjectMocks MessageServiceImpl messageService;
 
@@ -132,6 +135,67 @@ class MessageServiceImplTest {
         assertThat(message.getDeletedAt()).isNotNull();
         then(entityManager).should().flush();
         then(entityManager).should().clear();
+    }
+
+    @Test
+    void sendMessage_비멤버이면_R002_예외() {
+        // given
+        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> messageService.sendMessage("user-a", 1L, "내용"))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_ACCESS_DENIED);
+    }
+
+    @Test
+    void sendMessage_멤버이면_메시지_저장_및_방_touch() {
+        // given
+        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(true);
+        Message message = createMessage(1L, "내용");
+        given(messageRepository.save(any(Message.class))).willReturn(message);
+        given(chatRoomRepository.findById(1L)).willReturn(Optional.empty()); // room.touch() — no-op if absent
+
+        // when
+        Message result = messageService.sendMessage("user-a", 1L, "내용");
+
+        // then
+        assertThat(result).isEqualTo(message);
+        then(messageRepository).should().save(any(Message.class));
+    }
+
+    @Test
+    void markRead_비활성_멤버이면_R002_예외() {
+        // given
+        ChatRoomMember inactive = ChatRoomMember.create(createRoom(), "user-a");
+        inactive.leave();
+        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-a"))
+                .willReturn(Optional.of(inactive));
+
+        // when & then
+        assertThatThrownBy(() -> messageService.markRead("user-a", 1L, 10L))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_ACCESS_DENIED);
+    }
+
+    @Test
+    void markRead_활성_멤버이면_lastReadMessageId_업데이트() {
+        // given
+        ChatRoomMember member = ChatRoomMember.create(createRoom(), "user-a");
+        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-a"))
+                .willReturn(Optional.of(member));
+
+        // when
+        messageService.markRead("user-a", 1L, 10L);
+
+        // then
+        assertThat(member.getLastReadMessageId()).isEqualTo(10L);
+    }
+
+    private com.chat.room.domain.ChatRoom createRoom() {
+        return com.chat.room.domain.ChatRoom.createGroup("user-a", "테스트방");
     }
 
     private Message createMessage(Long id, String content) {

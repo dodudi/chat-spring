@@ -11,6 +11,8 @@ import com.chat.room.dto.InviteMemberRequest;
 import com.chat.room.dto.RoomSummaryResponse;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
+import com.chat.websocket.dto.NotificationMessage;
+import com.chat.websocket.redis.ChatMessagePublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class RoomServiceImpl implements RoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final ChatMessagePublisher chatMessagePublisher;
 
     @Override
     @Transactional
@@ -73,12 +76,15 @@ public class RoomServiceImpl implements RoomService {
         if (room.getType() == RoomType.DM) {
             throw new AppException(ErrorCode.ROOM_ACCESS_DENIED);
         }
+        NotificationMessage notification = new NotificationMessage(
+                "ROOM_INVITED", room.getId(), room.getName(), userId);
         for (String invitedUserId : request.userIds()) {
             chatRoomMemberRepository.findByRoom_IdAndUserId(roomId, invitedUserId)
                     .ifPresentOrElse(
                             member -> { if (!member.isActive()) member.rejoin(); },
                             () -> chatRoomMemberRepository.save(ChatRoomMember.create(room, invitedUserId))
                     );
+            chatMessagePublisher.publishNotification(invitedUserId, notification);
         }
     }
 

@@ -7,6 +7,7 @@ import com.chat.message.dto.MessageResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,6 +27,7 @@ class MessageControllerTest {
     @Autowired MockMvc mockMvc;
     @MockitoBean MessageService messageService;
     @MockitoBean JwtDecoder jwtDecoder;
+    @MockitoBean SimpMessagingTemplate simpMessagingTemplate;
 
     @Test
     void getMessages_200_반환() throws Exception {

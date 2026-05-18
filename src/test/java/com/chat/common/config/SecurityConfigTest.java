@@ -10,6 +10,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
+import com.chat.websocket.presence.PresenceService;
+import com.chat.websocket.redis.ChatMessagePublisher;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +38,15 @@ class SecurityConfigTest {
 
     @MockitoBean
     private MessageService messageService;
+
+    @MockitoBean
+    private SimpMessagingTemplate simpMessagingTemplate;
+
+    @MockitoBean
+    private ChatMessagePublisher chatMessagePublisher;
+
+    @MockitoBean
+    private PresenceService presenceService;
 
     @Test
     void 인증_없이_보호된_경로_접근시_401_JSON_반환() throws Exception {

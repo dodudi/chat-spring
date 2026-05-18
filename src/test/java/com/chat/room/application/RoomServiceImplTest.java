@@ -12,6 +12,7 @@ import com.chat.room.dto.RoomSummaryResponse;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
 import com.chat.room.infrastructure.RoomSummaryProjection;
+import com.chat.websocket.redis.ChatMessagePublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +32,7 @@ class RoomServiceImplTest {
 
     @Mock ChatRoomRepository chatRoomRepository;
     @Mock ChatRoomMemberRepository chatRoomMemberRepository;
+    @Mock ChatMessagePublisher chatMessagePublisher;
     @InjectMocks RoomServiceImpl roomService;
 
     @Test
@@ -132,6 +134,7 @@ class RoomServiceImplTest {
 
         // then
         assertThat(inactive.isActive()).isTrue();
+        then(chatMessagePublisher).should().publishNotification(eq("user-b"), any());
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,6 +31,7 @@ class RoomControllerTest {
     @Autowired MockMvc mockMvc;
     @MockitoBean RoomService roomService;
     @MockitoBean JwtDecoder jwtDecoder;
+    @MockitoBean SimpMessagingTemplate simpMessagingTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

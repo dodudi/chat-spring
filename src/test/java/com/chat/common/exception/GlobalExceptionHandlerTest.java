@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import com.chat.websocket.presence.PresenceService;
+import com.chat.websocket.redis.ChatMessagePublisher;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +48,15 @@ class GlobalExceptionHandlerTest {
 
     @MockitoBean
     private MessageService messageService;
+
+    @MockitoBean
+    private SimpMessagingTemplate simpMessagingTemplate;
+
+    @MockitoBean
+    private ChatMessagePublisher chatMessagePublisher;
+
+    @MockitoBean
+    private PresenceService presenceService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

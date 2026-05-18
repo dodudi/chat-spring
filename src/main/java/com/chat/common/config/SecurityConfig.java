@@ -28,7 +28,8 @@ public class SecurityConfig {
             "/actuator/info",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-            "/swagger-ui.html"
+            "/swagger-ui.html",
+            "/ws/chat"   // WebSocket upgrade — JWT auth at STOMP CONNECT level
     };
 
     @Bean
