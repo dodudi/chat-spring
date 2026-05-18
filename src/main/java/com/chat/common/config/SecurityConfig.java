@@ -29,13 +29,16 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/ws/chat"   // WebSocket upgrade — JWT auth at STOMP CONNECT level
+            "/ws/chat",      // WebSocket upgrade — JWT auth at STOMP CONNECT level
+            "/h2-console/**" // H2 console (local only — spring.h2.console.enabled=false in prod)
     };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin())) // H2 콘솔 iframe 허용
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
