@@ -54,9 +54,8 @@ logs/
 *.log
 *.log.*
 
-### Docker data ###
-docker/postgres-data/
-docker/redis-data/
+### Docker ###
+docker/
 
 ### Environment / Secrets ###
 .env
