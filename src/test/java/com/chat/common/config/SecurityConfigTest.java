@@ -1,6 +1,8 @@
 package com.chat.common.config;
 
 import com.chat.common.exception.GlobalExceptionHandler;
+import com.chat.message.application.MessageService;
+import com.chat.room.application.RoomService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -27,6 +29,12 @@ class SecurityConfigTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private RoomService roomService;
+
+    @MockitoBean
+    private MessageService messageService;
 
     @Test
     void 인증_없이_보호된_경로_접근시_401_JSON_반환() throws Exception {

@@ -1,11 +1,15 @@
 package com.chat.common.exception;
 
 import com.chat.common.ApiResponse;
+import com.chat.message.application.MessageService;
+import com.chat.room.application.RoomService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -32,6 +36,15 @@ class GlobalExceptionHandlerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private RoomService roomService;
+
+    @MockitoBean
+    private MessageService messageService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
