@@ -35,9 +35,12 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
             """, nativeQuery = true)
     List<RoomSummaryProjection> findMyRoomsWithUnread(@Param("userId") String userId);
 
-    Optional<ChatRoomMember> findByRoom_IdAndUserId(Long roomId, String userId);
+    @Query("SELECT m FROM ChatRoomMember m WHERE m.room.id = :roomId AND m.userId = :userId")
+    Optional<ChatRoomMember> findMember(@Param("roomId") Long roomId, @Param("userId") String userId);
 
-    boolean existsByRoom_IdAndUserId(Long roomId, String userId);
+    @Query("SELECT COUNT(m) > 0 FROM ChatRoomMember m WHERE m.room.id = :roomId AND m.userId = :userId AND m.active = true")
+    boolean isActiveMember(@Param("roomId") Long roomId, @Param("userId") String userId);
 
-    List<ChatRoomMember> findByRoom_IdAndActiveTrue(Long roomId);
+    @Query("SELECT m FROM ChatRoomMember m WHERE m.room.id = :roomId AND m.active = true")
+    List<ChatRoomMember> findActiveMembers(@Param("roomId") Long roomId);
 }

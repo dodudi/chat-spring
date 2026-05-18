@@ -29,7 +29,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public MessageCursorResponse getMessages(String userId, Long roomId, Long before, int size) {
-        if (!chatRoomMemberRepository.existsByRoom_IdAndUserId(roomId, userId)) {
+        if (!chatRoomMemberRepository.isActiveMember(roomId, userId)) {
             throw new AppException(ErrorCode.ROOM_ACCESS_DENIED);
         }
 
@@ -65,7 +65,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public Message sendMessage(String userId, Long roomId, String content) {
-        if (!chatRoomMemberRepository.existsByRoom_IdAndUserId(roomId, userId)) {
+        if (!chatRoomMemberRepository.isActiveMember(roomId, userId)) {
             throw new AppException(ErrorCode.ROOM_ACCESS_DENIED);
         }
         Message message = messageRepository.save(Message.create(roomId, userId, content));
@@ -76,7 +76,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public void markRead(String userId, Long roomId, Long messageId) {
-        ChatRoomMember member = chatRoomMemberRepository.findByRoom_IdAndUserId(roomId, userId)
+        ChatRoomMember member = chatRoomMemberRepository.findMember(roomId, userId)
                 .filter(ChatRoomMember::isActive)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_ACCESS_DENIED));
         member.updateLastRead(messageId);

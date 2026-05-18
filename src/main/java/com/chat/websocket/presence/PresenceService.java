@@ -25,4 +25,9 @@ public class PresenceService {
     public boolean isOnline(String userId) {
         return Boolean.TRUE.equals(stringRedisTemplate.hasKey(KEY_PREFIX + userId));
     }
+
+    public void offline(String userId) {
+        stringRedisTemplate.delete(KEY_PREFIX + userId);
+        log.debug("[PRESENCE_OFFLINE] userId={}", userId);
+    }
 }

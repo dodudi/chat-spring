@@ -79,7 +79,7 @@ public class RoomServiceImpl implements RoomService {
         NotificationMessage notification = new NotificationMessage(
                 "ROOM_INVITED", room.getId(), room.getName(), userId);
         for (String invitedUserId : request.userIds()) {
-            chatRoomMemberRepository.findByRoom_IdAndUserId(roomId, invitedUserId)
+            chatRoomMemberRepository.findMember(roomId, invitedUserId)
                     .ifPresentOrElse(
                             member -> { if (!member.isActive()) member.rejoin(); },
                             () -> chatRoomMemberRepository.save(ChatRoomMember.create(room, invitedUserId))
@@ -91,7 +91,7 @@ public class RoomServiceImpl implements RoomService {
     @Override
     @Transactional
     public void leaveRoom(String userId, Long roomId) {
-        ChatRoomMember member = chatRoomMemberRepository.findByRoom_IdAndUserId(roomId, userId)
+        ChatRoomMember member = chatRoomMemberRepository.findMember(roomId, userId)
                 .filter(ChatRoomMember::isActive)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_ACCESS_DENIED));
         member.leave();

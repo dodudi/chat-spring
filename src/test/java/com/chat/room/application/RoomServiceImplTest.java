@@ -126,7 +126,7 @@ class RoomServiceImplTest {
         inactive.leave();
 
         given(chatRoomRepository.findById(1L)).willReturn(Optional.of(room));
-        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-b"))
+        given(chatRoomMemberRepository.findMember(1L, "user-b"))
                 .willReturn(Optional.of(inactive));
 
         // when
@@ -142,7 +142,7 @@ class RoomServiceImplTest {
         // given
         ChatRoom room = ChatRoom.createGroup("user-a", "팀");
         ChatRoomMember member = ChatRoomMember.create(room, "user-a");
-        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-a"))
+        given(chatRoomMemberRepository.findMember(1L, "user-a"))
                 .willReturn(Optional.of(member));
 
         // when
@@ -155,7 +155,7 @@ class RoomServiceImplTest {
     @Test
     void leaveRoom_멤버가_없으면_R002_예외() {
         // given
-        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-a"))
+        given(chatRoomMemberRepository.findMember(1L, "user-a"))
                 .willReturn(Optional.empty());
 
         // when & then

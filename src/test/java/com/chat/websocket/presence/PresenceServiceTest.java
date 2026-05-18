@@ -50,4 +50,13 @@ class PresenceServiceTest {
         // when & then
         assertThat(presenceService.isOnline("user-b")).isFalse();
     }
+
+    @Test
+    void offline_Redis_키_즉시_삭제() {
+        // when
+        presenceService.offline("user-a");
+
+        // then
+        then(stringRedisTemplate).should().delete("user:online:user-a");
+    }
 }

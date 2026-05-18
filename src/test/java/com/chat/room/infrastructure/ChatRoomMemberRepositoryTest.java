@@ -38,10 +38,10 @@ class ChatRoomMemberRepositoryTest {
     }
 
     @Test
-    void findByRoom_IdAndUserId_멤버가_존재하면_반환() {
+    void findMember_멤버가_존재하면_반환() {
         // when
         Optional<ChatRoomMember> result = chatRoomMemberRepository
-                .findByRoom_IdAndUserId(room.getId(), "user-a");
+                .findMember(room.getId(), "user-a");
 
         // then
         assertThat(result).isPresent();
@@ -49,34 +49,45 @@ class ChatRoomMemberRepositoryTest {
     }
 
     @Test
-    void findByRoom_IdAndUserId_멤버가_없으면_빈값_반환() {
+    void findMember_멤버가_없으면_빈값_반환() {
         // when
         Optional<ChatRoomMember> result = chatRoomMemberRepository
-                .findByRoom_IdAndUserId(room.getId(), "user-z");
+                .findMember(room.getId(), "user-z");
 
         // then
         assertThat(result).isEmpty();
     }
 
     @Test
-    void existsByRoom_IdAndUserId_멤버가_있으면_true() {
-        assertThat(chatRoomMemberRepository.existsByRoom_IdAndUserId(room.getId(), "user-a")).isTrue();
+    void isActiveMember_활성_멤버이면_true() {
+        assertThat(chatRoomMemberRepository.isActiveMember(room.getId(), "user-a")).isTrue();
     }
 
     @Test
-    void existsByRoom_IdAndUserId_멤버가_없으면_false() {
-        assertThat(chatRoomMemberRepository.existsByRoom_IdAndUserId(room.getId(), "user-z")).isFalse();
+    void isActiveMember_미등록_유저이면_false() {
+        assertThat(chatRoomMemberRepository.isActiveMember(room.getId(), "user-z")).isFalse();
     }
 
     @Test
-    void findByRoom_IdAndActiveTrue_비활성_멤버는_제외() {
+    void isActiveMember_퇴장한_멤버이면_false() {
+        // given
+        ChatRoomMember member = chatRoomMemberRepository.findMember(room.getId(), "user-a").orElseThrow();
+        member.leave();
+        chatRoomMemberRepository.save(member);
+
+        // when & then
+        assertThat(chatRoomMemberRepository.isActiveMember(room.getId(), "user-a")).isFalse();
+    }
+
+    @Test
+    void findActiveMembers_비활성_멤버는_제외() {
         // given
         ChatRoomMember inactive = chatRoomMemberRepository.save(ChatRoomMember.create(room, "user-b"));
         inactive.leave();
         chatRoomMemberRepository.save(inactive);
 
         // when
-        List<ChatRoomMember> active = chatRoomMemberRepository.findByRoom_IdAndActiveTrue(room.getId());
+        List<ChatRoomMember> active = chatRoomMemberRepository.findActiveMembers(room.getId());
 
         // then — user-a만 활성
         assertThat(active).hasSize(1);

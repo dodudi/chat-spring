@@ -35,7 +35,7 @@ class MessageServiceImplTest {
     @Test
     void getMessages_비멤버이면_R002_예외() {
         // given
-        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(false);
+        given(chatRoomMemberRepository.isActiveMember(1L, "user-a")).willReturn(false);
 
         // when & then
         assertThatThrownBy(() -> messageService.getMessages("user-a", 1L, null, 50))
@@ -47,7 +47,7 @@ class MessageServiceImplTest {
     @Test
     void getMessages_before없으면_최신순_조회() {
         // given
-        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(true);
+        given(chatRoomMemberRepository.isActiveMember(1L, "user-a")).willReturn(true);
         Message m1 = createMessage(1L, "첫 번째");
         Message m2 = createMessage(2L, "두 번째");
         given(messageRepository.findByRoomIdOrderByIdDesc(eq(1L), any(Pageable.class)))
@@ -65,7 +65,7 @@ class MessageServiceImplTest {
     @Test
     void getMessages_size보다_많으면_hasMore_true() {
         // given — size=2, fetch 3 (size+1)
-        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(true);
+        given(chatRoomMemberRepository.isActiveMember(1L, "user-a")).willReturn(true);
         Message m3 = createMessage(3L, "세 번째");
         Message m2 = createMessage(2L, "두 번째");
         Message m1 = createMessage(1L, "첫 번째");
@@ -84,7 +84,7 @@ class MessageServiceImplTest {
     @Test
     void getMessages_before있으면_커서_기반_조회() {
         // given
-        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(true);
+        given(chatRoomMemberRepository.isActiveMember(1L, "user-a")).willReturn(true);
         Message m1 = createMessage(1L, "첫 번째");
         given(messageRepository.findByRoomIdAndIdLessThanOrderByIdDesc(eq(1L), eq(3L), any(Pageable.class)))
                 .willReturn(List.of(m1));
@@ -140,7 +140,7 @@ class MessageServiceImplTest {
     @Test
     void sendMessage_비멤버이면_R002_예외() {
         // given
-        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(false);
+        given(chatRoomMemberRepository.isActiveMember(1L, "user-a")).willReturn(false);
 
         // when & then
         assertThatThrownBy(() -> messageService.sendMessage("user-a", 1L, "내용"))
@@ -152,7 +152,7 @@ class MessageServiceImplTest {
     @Test
     void sendMessage_멤버이면_메시지_저장_및_방_touch() {
         // given
-        given(chatRoomMemberRepository.existsByRoom_IdAndUserId(1L, "user-a")).willReturn(true);
+        given(chatRoomMemberRepository.isActiveMember(1L, "user-a")).willReturn(true);
         Message message = createMessage(1L, "내용");
         given(messageRepository.save(any(Message.class))).willReturn(message);
         given(chatRoomRepository.findById(1L)).willReturn(Optional.empty()); // room.touch() — no-op if absent
@@ -170,7 +170,7 @@ class MessageServiceImplTest {
         // given
         ChatRoomMember inactive = ChatRoomMember.create(createRoom(), "user-a");
         inactive.leave();
-        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-a"))
+        given(chatRoomMemberRepository.findMember(1L, "user-a"))
                 .willReturn(Optional.of(inactive));
 
         // when & then
@@ -184,7 +184,7 @@ class MessageServiceImplTest {
     void markRead_활성_멤버이면_lastReadMessageId_업데이트() {
         // given
         ChatRoomMember member = ChatRoomMember.create(createRoom(), "user-a");
-        given(chatRoomMemberRepository.findByRoom_IdAndUserId(1L, "user-a"))
+        given(chatRoomMemberRepository.findMember(1L, "user-a"))
                 .willReturn(Optional.of(member));
 
         // when
