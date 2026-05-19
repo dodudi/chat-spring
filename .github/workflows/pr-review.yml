@@ -13,5 +13,5 @@ jobs:
           curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "content": "**PR 리뷰 요청**\n제목: ${{ github.event.pull_request.title }}\n작성자: ${{ github.event.pull_request.user.login }}\nURL: ${{ github.event.pull_request.html_url }}"
+              "content": "<@1505943257622909140> **PR 리뷰 요청**\n제목: ${{ github.event.pull_request.title }}\n작성자: ${{ github.event.pull_request.user.login }}\nURL: ${{ github.event.pull_request.html_url }}"
             }'
