@@ -60,6 +60,7 @@ docker/
 ### Environment / Secrets ###
 .env
 .env.*
+!.env.example
 application-local.yml
 application-local.properties
 application-secret.yml
