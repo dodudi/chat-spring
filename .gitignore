@@ -84,4 +84,6 @@ presentation.html
 .claude/*
 !.claude/rules/
 !.claude/rules/*
+!.claude/docs/
+!.claude/docs/*
 test-client
