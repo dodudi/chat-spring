@@ -8,9 +8,10 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send to Discord
+      - name: Send to Discord via Bot
         run: |
-          curl -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+          curl -X POST "https://discord.com/api/v10/channels/${{ secrets.DISCORD_CHANNEL_ID }}/messages" \
+            -H "Authorization: Bot ${{ secrets.DISCORD_BOT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
               "content": "<@1505943257622909140> **PR 리뷰 요청**\n제목: ${{ github.event.pull_request.title }}\n작성자: ${{ github.event.pull_request.user.login }}\nURL: ${{ github.event.pull_request.html_url }}"
