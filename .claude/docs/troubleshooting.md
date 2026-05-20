@@ -450,3 +450,31 @@ curl -H "Origin: http://localhost:3000" -I https://auth.rudy.it.kr/.well-known/o
 # Access-Control-Allow-Origin: http://localhost:3000 이면 허용됨
 ```
 
+---
+
+## #019 RoomSummaryProjection — Instant/OffsetDateTime 타입 불일치
+
+**증상**
+`/api/v1/rooms` (내 방 목록 조회) 호출 시 런타임 오류 발생:
+```
+Cannot project java.time.Instant to java.time.OffsetDateTime;
+Target type is not an interface and no matching Converter found
+```
+
+**원인**
+PostgreSQL `TIMESTAMPTZ` 컬럼을 native query + Spring Data JPA 인터페이스 프로젝션으로 조회하면 Hibernate 7.x가 `Instant`로 매핑한다.
+`RoomSummaryProjection`이 `OffsetDateTime`을 반환 타입으로 선언하고 있어 프로젝션 변환 불가.
+
+**해결**
+`RoomSummaryProjection`의 반환 타입을 `Instant`로 변경하고, `RoomSummaryResponse.from()`에서 `toOffsetDateTime(Instant)` 헬퍼로 변환:
+```java
+// RoomSummaryProjection.java
+Instant getUpdatedAt();
+Instant getLastMessageAt();
+
+// RoomSummaryResponse.java
+private static OffsetDateTime toOffsetDateTime(Instant instant) {
+    return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+}
+```
+
