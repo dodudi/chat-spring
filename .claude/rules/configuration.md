@@ -31,6 +31,7 @@ src/main/resources/
 | `REDIS_PORT` | Redis 포트 |
 | `REDIS_PASSWORD` | Redis 비밀번호 |
 | `JWT_ISSUER_URI` | OAuth2 JWT 발급자 URI |
+| `CORS_ALLOWED_ORIGINS` | CORS 허용 origin 목록 (쉼표 구분, 미설정 시 `*`) |
 
 새 환경변수 추가 시 이 표를 함께 갱신한다.
 
