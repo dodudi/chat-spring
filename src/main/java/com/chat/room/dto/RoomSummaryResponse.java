@@ -4,7 +4,9 @@ import com.chat.room.domain.ChatRoom;
 import com.chat.room.domain.RoomType;
 import com.chat.room.infrastructure.RoomSummaryProjection;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 public record RoomSummaryResponse(
         Long id,
@@ -24,9 +26,13 @@ public record RoomSummaryResponse(
                 : null;
         return new RoomSummaryResponse(
                 p.getId(), roomType, p.getName(), dmTarget,
-                p.getLastMessageContent(), p.getLastMessageAt(),
-                p.getUnreadCount(), p.getUpdatedAt()
+                p.getLastMessageContent(), toOffsetDateTime(p.getLastMessageAt()),
+                p.getUnreadCount(), toOffsetDateTime(p.getUpdatedAt())
         );
+    }
+
+    private static OffsetDateTime toOffsetDateTime(Instant instant) {
+        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
     }
 
     public static RoomSummaryResponse fromNew(ChatRoom room, String currentUserId) {

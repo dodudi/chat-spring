@@ -1,6 +1,6 @@
 package com.chat.room.infrastructure;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 public interface RoomSummaryProjection {
 
@@ -9,8 +9,8 @@ public interface RoomSummaryProjection {
     String getName();
     String getDmUserA();
     String getDmUserB();
-    OffsetDateTime getUpdatedAt();
+    Instant getUpdatedAt();
     String getLastMessageContent();
-    OffsetDateTime getLastMessageAt();
+    Instant getLastMessageAt();
     long getUnreadCount();
 }

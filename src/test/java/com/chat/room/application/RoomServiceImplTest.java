@@ -19,7 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -184,9 +184,9 @@ class RoomServiceImplTest {
             @Override public String getName() { return name; }
             @Override public String getDmUserA() { return dmUserA; }
             @Override public String getDmUserB() { return dmUserB; }
-            @Override public OffsetDateTime getUpdatedAt() { return OffsetDateTime.now(); }
+            @Override public Instant getUpdatedAt() { return Instant.now(); }
             @Override public String getLastMessageContent() { return null; }
-            @Override public OffsetDateTime getLastMessageAt() { return null; }
+            @Override public Instant getLastMessageAt() { return null; }
             @Override public long getUnreadCount() { return 0L; }
         };
     }
