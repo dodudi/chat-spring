@@ -336,3 +336,117 @@ const secret = pm.environment.get('localJwtSecret')
 **주의**
 Postman Environment에 `localJwtSecret` 변수를 추가해두면 폴백 없이도 동작한다. 팀원마다 다른 시크릿을 써야 한다면 환경 변수로 관리할 것.
 
+---
+
+## #015 nginx — WebSocket 연결 실패 (101 미반환)
+
+**증상**
+브라우저에서 `wss://chat.rudy.it.kr/ws/chat` 연결 시 "WebSocket connection failed" 오류.
+curl로 HTTP 요청은 정상이나 WebSocket 업그레이드가 안 됨.
+
+**원인**
+nginx 기본 설정은 HTTP/1.0으로 프록시하며 `Upgrade` 헤더를 전달하지 않아 WebSocket 핸드셰이크가 실패함.
+
+**해결**
+nginx `location` 블록에 다음 추가:
+```nginx
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+proxy_read_timeout 3600s;
+```
+
+**검증**
+```bash
+curl -k -i -N \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  https://chat.rudy.it.kr/ws/chat
+# → HTTP/1.1 101 Switching Protocols 응답이 와야 정상
+```
+
+---
+
+## #016 nginx — `host not found in upstream "chat-spring"`
+
+**증상**
+nginx 설정 변경 후 기동 실패:
+```
+nginx: [emerg] host not found in upstream "chat-spring"
+```
+
+**원인**
+nginx가 Docker 컨테이너로 실행 중이어서 `chat-spring` 호스트명은 같은 Docker 네트워크(`chat-net`) 안에서만 해석됨. 호스트에서 직접 실행한 nginx라면 해당 이름을 모름.
+
+**해결**
+nginx도 `chat-net`에 속한 컨테이너로 실행되어야 한다. `proxy_pass http://chat-spring:8080`은 그대로 유지. `localhost:21002`로 바꾸면 안 됨 — 컨테이너 내부 localhost는 호스트가 아님.
+
+**주의**
+nginx reload 시 반드시 컨테이너 내부에서 실행해야 한다:
+```bash
+docker exec <nginx컨테이너명> nginx -s reload
+```
+호스트에서 `sudo nginx -s reload`를 실행하면 컨테이너 nginx에 적용되지 않음.
+
+---
+
+## #017 STOMP CONNECT — JWT issuer 불일치로 인증 실패
+
+**증상**
+WebSocket 연결(101)은 성공하나 STOMP CONNECT 직후 ERROR 프레임 수신:
+```
+Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]
+```
+Spring Boot 로그에 `[WS_AUTH_FAIL]`이 찍히지 않음.
+
+**원인**
+`client_credentials`로 발급된 JWT의 `iss` 클레임이 `http://auth.rudy.it.kr` (HTTP)인데,
+Spring Boot의 `JWT_ISSUER_URI`는 `https://auth.rudy.it.kr` (HTTPS)로 설정되어 있어 issuer 검증 실패.
+
+토큰 payload 디코딩으로 확인:
+```json
+{ "iss": "http://auth.rudy.it.kr" }
+```
+
+**해결**
+Spring Authorization Server의 issuer를 HTTPS로 명시 설정:
+```yaml
+# auth 서버 application.yml
+spring:
+  security:
+    oauth2:
+      authorizationserver:
+        issuer: https://auth.rudy.it.kr
+```
+auth 서버 재시작 후 새로 발급한 토큰의 `iss`가 `https://auth.rudy.it.kr`이면 정상.
+
+**주의**
+`JwtChannelInterceptor`가 `JwtException`이 아닌 예외를 받으면 `[WS_AUTH_FAIL]` 로그가 찍히지 않을 수 있음. 로그가 없어도 STOMP ERROR가 오면 JWT 문제를 먼저 의심할 것.
+
+---
+
+## #018 test-client — CORS로 OIDC Discovery 차단
+
+**증상**
+IntelliJ 내장 서버(랜덤 포트 예: 63342)에서 HTML을 열면:
+```
+Access to fetch at 'https://auth.rudy.it.kr/.well-known/openid-configuration'
+has been blocked by CORS policy
+```
+
+**원인**
+브라우저의 `fetch()`는 CORS 정책을 따른다. auth 서버가 `localhost:63342`를 허용하지 않아 차단됨. `localhost:3000`은 허용됨.
+
+**해결**
+OIDC auto-discovery `fetch()`를 제거하고 `client_credentials` 방식으로 전환:
+- Authorization Endpoint / Token Endpoint 를 직접 입력
+- `Authorization: Basic base64(clientId:clientSecret)` 헤더로 토큰 발급
+- redirect 없이 POST 한 번으로 토큰 수령
+
+**확인 방법**
+```bash
+curl -H "Origin: http://localhost:3000" -I https://auth.rudy.it.kr/.well-known/openid-configuration
+# Access-Control-Allow-Origin: http://localhost:3000 이면 허용됨
+```
+
