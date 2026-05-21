@@ -41,7 +41,7 @@ return ResponseEntity.noContent().build();
 
 ```json
 {
-  "code": "R001",y
+  "code": "R001",
   "message": "채팅방을 찾을 수 없습니다.",
   "data": null
 }
