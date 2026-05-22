@@ -26,7 +26,8 @@ Table profiles {
   updated_at timestamptz  [not null, default: `NOW()`]
 
   indexes {
-    user_id [name: 'idx_profiles_user_id']
+    user_id  [name: 'idx_profiles_user_id']
+    nickname [unique, name: 'uidx_profiles_nickname']
   }
 }
 
