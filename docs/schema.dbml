@@ -1,92 +1,143 @@
-// chat-spring DB Schema
-// https://dbml.org
-
-Project chat_spring {
-  database_type: 'PostgreSQL'
-  Note: '''
-    OAuth2 Resource Server 기반 채팅 서비스.
-    users 테이블 없음 — user_id는 JWT subject (String/UUID).
-  '''
-}
-
-// ──────────────────────────────────────────
-// Enum
-// ──────────────────────────────────────────
-
-Enum room_type {
-  DM    [note: '1:1 다이렉트 메시지']
-  GROUP [note: '2인 이상 그룹 채팅']
-}
-
-Enum message_type {
-  TEXT  [note: '텍스트 메시지']
-  IMAGE [note: '이미지 첨부']
-  FILE  [note: '파일 첨부']
-}
-
-// ──────────────────────────────────────────
-// Tables
-// ──────────────────────────────────────────
+// =============================================
+// 채팅 서비스 DB 스키마
+// V1__create_chat_rooms.sql 기준
+// =============================================
 
 Table chat_rooms {
-  id         bigint      [pk, increment, note: 'GENERATED ALWAYS AS IDENTITY']
-  type       room_type   [not null]
-  name       varchar(100)               [note: 'GROUP 방 이름. DM은 NULL']
-  created_by varchar(255) [not null,    note: 'JWT subject']
-  dm_user_a  varchar(255)               [note: 'DM 참여자 — 두 user_id 중 사전순 작은 값. GROUP이면 NULL']
-  dm_user_b  varchar(255)               [note: 'DM 참여자 — 두 user_id 중 사전순 큰 값. GROUP이면 NULL']
-  created_at timestamptz [not null,     default: `now()`]
-  updated_at timestamptz [not null,     default: `now()`, note: '마지막 메시지 전송 시각 — 방 목록 정렬 기준']
+  id         uuid         [pk, default: `gen_random_uuid()`]
+  type       varchar(50)  [not null, note: 'DM | GROUP | PUBLIC']
+  room_key   varchar(255) [not null, unique]
+  name       varchar(100) [note: 'DM 방은 null 허용']
+  password   varchar(255)
+  created_by varchar(255) [not null]
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
 
   indexes {
-    created_by                [name: 'idx_chat_rooms_created_by']
-    (dm_user_a, dm_user_b)   [unique, name: 'uidx_chat_rooms_dm',
-                               note: 'WHERE type = DM — DM 방 중복 생성 방지. 항상 정렬된 순서로 저장']
+    created_by [name: 'idx_chat_rooms_created_by']
   }
-
-  Note: '''
-    DM 중복 방지:
-      creatorId < targetId 이면 (creatorId → dm_user_a, targetId → dm_user_b)
-      creatorId > targetId 이면 (targetId → dm_user_a, creatorId → dm_user_b)
-    두 사용자 간 DM 방은 항상 동일한 (dm_user_a, dm_user_b) 조합을 가지므로 UNIQUE 인덱스로 중복 차단.
-  '''
 }
 
-Table chat_room_members {
-  id                   bigint       [pk, increment]
-  room_id              bigint       [not null, ref: > chat_rooms.id]
-  user_id              varchar(255) [not null, note: 'JWT subject']
-  joined_at            timestamptz  [not null, default: `now()`, note: '최초 입장 또는 재입장 시각']
-  last_read_message_id bigint                  [note: '마지막으로 읽은 메시지 ID — 읽음 처리 기준. FK 제약 없음']
-  is_active            boolean      [not null, default: true, note: 'false = 퇴장(GROUP) 또는 숨김(DM)']
-  created_at           timestamptz  [not null, default: `now()`]
-  updated_at           timestamptz  [not null, default: `now()`]
+Table profiles {
+  id         bigint       [pk, increment]
+  user_id    varchar(255) [not null]
+  nickname   varchar(50)  [not null]
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
 
   indexes {
-    room_id          [name: 'idx_members_room_id']
-    user_id          [name: 'idx_members_user_id']
-    (room_id, user_id) [unique, name: 'uidx_members_room_user', note: '한 사용자의 동일 방 중복 가입 방지']
+    user_id [name: 'idx_profiles_user_id']
+  }
+}
+
+// DM:     is_hidden(현재 숨김 여부) + hidden_at(나간 시각, 메시지 노출 기준점 - 숨김 해제 후에도 유지)
+// GROUP:  left_at(자발적 퇴장 시각, NOT NULL이면 미참여 상태 - 초대 받으면 재참여 가능) | kicked_at(강퇴 - 재참여,초대 불가)
+// PUBLIC: kicked_at(강퇴 - 재참여,초대 불가) | 자발적 퇴장 시 레코드 삭제
+Table chat_room_members {
+  id         bigint       [pk, increment]
+  room_id    uuid         [not null, ref: > chat_rooms.id]
+  user_id    varchar(255) [not null]
+  profile_id bigint       [ref: > profiles.id]
+  role       varchar(20)  [not null, default: 'MEMBER', note: 'OWNER | MEMBER']
+  is_hidden  boolean      [not null, default: false, note: 'DM: 현재 목록 숨김 여부']
+  hidden_at  timestamptz  [note: 'DM: 숨김 처리 시각. 메시지 노출 기준점. 숨김 해제 후에도 유지']
+  left_at    timestamptz  [note: 'GROUP: 자발적 퇴장 시각. NOT NULL이면 미참여 상태 (초대 받으면 재참여 가능)']
+  kicked_at  timestamptz  [note: 'GROUP/PUBLIC: 강퇴 시각. NOT NULL이면 재참여,초대 불가']
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    room_id            [name: 'idx_members_room_id']
+    user_id            [name: 'idx_members_user_id']
+    (room_id, user_id) [unique, name: 'uidx_members_room_user']
+  }
+}
+
+Table invitations {
+  id         bigint       [pk, increment]
+  room_id    uuid         [not null, ref: > chat_rooms.id]
+  inviter_id varchar(255) [not null]
+  invitee_id varchar(255) [not null]
+  status     varchar(20)  [not null, default: 'PENDING', note: 'PENDING | ACCEPTED | REJECTED']
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    invitee_id [name: 'idx_invitations_invitee_id']
+    room_id    [name: 'idx_invitations_room_id']
   }
 }
 
 Table messages {
   id         bigint       [pk, increment]
-  room_id    bigint       [not null, ref: > chat_rooms.id]
-  sender_id  varchar(255) [not null, note: 'JWT subject']
+  room_id    uuid         [not null, ref: > chat_rooms.id]
+  sender_id  varchar(255) [not null]
+  profile_id bigint       [ref: > profiles.id]
   content    text         [not null]
-  type       message_type [not null, default: 'TEXT']
-  deleted_at timestamptz  [note: 'NULL = 정상 / NOT NULL = soft delete. 조회 시 자동 제외 (@SQLRestriction)']
-  created_at timestamptz  [not null, default: `now()`]
+  type       varchar(20)  [not null, default: 'TEXT', note: 'TEXT | IMAGE | FILE']
+  is_edited  boolean      [not null, default: false]
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
+  deleted_at timestamptz
 
   indexes {
-    (room_id, created_at) [name: 'idx_messages_room_created',
-                           note: 'DESC 정렬 — 커서 기반 페이징 (before={messageId}&size=50)']
-    sender_id             [name: 'idx_messages_sender_id']
+    room_id              [name: 'idx_messages_room_id']
+    (room_id, created_at) [name: 'idx_messages_created_at']
   }
+}
 
-  Note: '''
-    메시지 삭제는 soft delete (deleted_at 설정).
-    물리 삭제(DELETE) 사용 안 함.
-    updated_at 없음 — 메시지 내용은 수정 불가.
-  '''
+Table room_read_cursors {
+  id                   bigint       [pk, increment]
+  room_id              uuid         [not null, ref: > chat_rooms.id]
+  user_id              varchar(255) [not null]
+  last_read_message_id bigint       [ref: > messages.id]
+  created_at           timestamptz  [not null, default: `NOW()`]
+  updated_at           timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    (room_id, user_id) [unique, name: 'uidx_read_cursors_room_user']
+  }
+}
+
+Table user_groups {
+  id         bigint       [pk, increment]
+  user_id    varchar(255) [not null]
+  name       varchar(50)  [not null]
+  is_default boolean      [not null, default: false]
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    user_id        [name: 'idx_user_groups_user_id']
+    (user_id, name) [unique, name: 'uidx_groups_user_name']
+  }
+}
+
+Table room_group_memberships {
+  id         bigint       [pk, increment]
+  room_id    uuid         [not null, ref: > chat_rooms.id]
+  group_id   bigint       [not null, ref: > user_groups.id]
+  created_at timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    (room_id, group_id) [unique, name: 'uidx_room_group']
+  }
+}
+
+// token      : URI에 포함될 고유 토큰
+// expires_at : NULL이면 만료 없음. NOT NULL이면 해당 시각 이후 사용 불가
+// is_active  : false이면 방장이 비활성화(삭제)한 URI
+Table room_invite_links {
+  id         bigint       [pk, increment]
+  room_id    uuid         [not null, ref: > chat_rooms.id]
+  token      varchar(255) [not null]
+  created_by varchar(255) [not null]
+  expires_at timestamptz
+  is_active  boolean      [not null, default: true]
+  created_at timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    room_id [name: 'idx_invite_links_room_id']
+    token   [unique, name: 'uidx_invite_links_token']
+  }
 }
