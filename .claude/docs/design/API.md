@@ -63,8 +63,8 @@
 
 ### 기본 프로필 생성 (최초 로그인)
 
-> 클라이언트가 로그인 직후 호출. 기본 프로필이 없으면 생성(201), 이미 있으면 기존 프로필 반환(200).
-> 닉네임은 서비스 전체 고유. 중복 시 `P004` 반환.
+> 클라이언트가 로그인 직후 호출. 기본 프로필이 없으면 생성(201), 이미 있으면 **body 무시 후 기존 프로필 반환(200)**.
+> 닉네임은 서비스 전체 고유. 중복 시 `P004` 반환 (기존 프로필이 없는 경우에만 검증).
 
 ```
 POST /profiles/default
@@ -192,7 +192,7 @@ DELETE /profiles/{profileId}
 | 코드 | HTTP | 설명 |
 |------|------|------|
 | `R001` | 404 | 채팅방 없음 |
-| `R002` | 404 | 대상 유저 없음 (DM 생성 시 — profiles 테이블 기준) |
+| `R002` | 404 | 대상 유저의 프로필 없음 (한 번도 로그인하지 않은 유저 — profiles 미존재) |
 | `R003` | 409 | 이미 참여 중 |
 | `R004` | 409 | 인원 초과 |
 | `R005` | 400 | 비밀번호 불일치 |
@@ -234,7 +234,7 @@ POST /rooms/dm
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `R002` | 대상 유저 없음 (profiles 미존재) |
+| `R002` | 대상 유저의 프로필 없음 (한 번도 로그인하지 않은 유저) |
 
 ---
 
@@ -645,8 +645,10 @@ GET /invitations?status={status}
 
 ### 초대 수락
 
+> 상태 전이 명령이므로 POST 사용 (PATCH는 부분 수정 의미라 부적합).
+
 ```
-PATCH /invitations/{invitationId}/accept
+POST /invitations/{invitationId}/accept
 ```
 
 **Request Body**
@@ -670,8 +672,10 @@ PATCH /invitations/{invitationId}/accept
 
 ### 초대 거절
 
+> 상태 전이 명령이므로 POST 사용.
+
 ```
-PATCH /invitations/{invitationId}/reject
+POST /invitations/{invitationId}/reject
 ```
 
 **Response** `200 OK`
@@ -901,10 +905,11 @@ DELETE /messages/{messageId}
 
 ### 읽음 처리
 
+> 같은 값으로 여러 번 호출해도 결과가 동일한 멱등 연산이므로 PUT 사용.
 > WebSocket 연결 중에는 STOMP SEND로도 처리 가능. REST는 백그라운드·재연결 시 사용.
 
 ```
-POST /rooms/{roomId}/messages/read
+PUT /rooms/{roomId}/messages/read
 ```
 
 **Request Body**
