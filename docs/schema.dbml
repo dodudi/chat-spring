@@ -18,17 +18,12 @@ Table chat_rooms {
   }
 }
 
+// 프로필은 채팅방에 종속 - 방 입장 시 nickname을 지정하면 자동 생성
 Table profiles {
   id         bigint       [pk, increment]
-  user_id    varchar(255) [not null]
   nickname   varchar(50)  [not null]
   created_at timestamptz  [not null, default: `NOW()`]
   updated_at timestamptz  [not null, default: `NOW()`]
-
-  indexes {
-    user_id  [name: 'idx_profiles_user_id']
-    nickname [unique, name: 'uidx_profiles_nickname']
-  }
 }
 
 // DM:     is_hidden(현재 숨김 여부) + hidden_at(나간 시각, 메시지 노출 기준점 - 숨김 해제 후에도 유지)

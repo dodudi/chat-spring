@@ -3,7 +3,6 @@
 ## 목차
 
 - [공통](#공통)
-- [프로필](#프로필)
 - [채팅방](#채팅방)
 - [초대](#초대)
 - [초대 URI](#초대-uri)
@@ -48,143 +47,6 @@
 
 ---
 
-## 프로필
-
-### 에러 코드 (Profile)
-
-| 코드 | HTTP | 설명 |
-|------|------|------|
-| `P001` | 404 | 프로필 없음 |
-| `P002` | 403 | 사용 중인 프로필 삭제 불가 (현재 활성 멤버 기준) |
-| `P003` | 409 | 최대 프로필 수 초과 (기본값: 5개) |
-| `P004` | 409 | 닉네임 중복 (서비스 전체 고유) |
-
----
-
-### 기본 프로필 생성 (최초 로그인)
-
-> 클라이언트가 로그인 직후 호출. 기본 프로필이 없으면 생성(201), 이미 있으면 **body 무시 후 기존 프로필 반환(200)**.
-> 닉네임은 서비스 전체 고유. 중복 시 `P004` 반환 (기존 프로필이 없는 경우에만 검증).
-
-```
-POST /profiles/default
-```
-
-**Request Body**
-```json
-{
-  "nickname": "string"
-}
-```
-
-**Response** `201 Created` (신규 생성) / `200 OK` (기존 반환)
-```json
-{
-  "id": 1,
-  "nickname": "string",
-  "createdAt": "2026-05-22T00:00:00Z"
-}
-```
-
----
-
-### 프로필 목록 조회
-
-```
-GET /profiles
-```
-
-**Response** `200 OK`
-```json
-[
-  {
-    "id": 1,
-    "nickname": "string",
-    "createdAt": "2026-05-22T00:00:00Z"
-  }
-]
-```
-
----
-
-### 프로필 생성
-
-> 닉네임 서비스 전체 고유 (다른 사용자와 중복 불가). 최대 5개 초과 시 `P003` 반환.
-
-```
-POST /profiles
-```
-
-**Request Body**
-```json
-{
-  "nickname": "string"
-}
-```
-
-**Response** `201 Created`
-```json
-{
-  "id": 2,
-  "nickname": "string",
-  "createdAt": "2026-05-22T00:00:00Z"
-}
-```
-
-| 에러 코드 | 설명 |
-|-----------|------|
-| `P003` | 최대 프로필 수 초과 |
-| `P004` | 닉네임 중복 |
-
----
-
-### 프로필 수정
-
-```
-PATCH /profiles/{profileId}
-```
-
-**Request Body**
-```json
-{
-  "nickname": "string"
-}
-```
-
-**Response** `200 OK`
-```json
-{
-  "id": 1,
-  "nickname": "string",
-  "createdAt": "2026-05-22T00:00:00Z"
-}
-```
-
-| 에러 코드 | 설명 |
-|-----------|------|
-| `P001` | 프로필 없음 |
-| `P004` | 닉네임 중복 |
-
----
-
-### 프로필 삭제
-
-> 현재 활성 상태(`left_at IS NULL AND kicked_at IS NULL`)인 채팅방에서 사용 중이면 삭제 불가.
-> 퇴장하거나 강퇴된 방에서 사용하던 프로필은 삭제 가능.
-
-```
-DELETE /profiles/{profileId}
-```
-
-**Response** `204 No Content`
-
-| 에러 코드 | 설명 |
-|-----------|------|
-| `P001` | 프로필 없음 |
-| `P002` | 사용 중인 프로필 삭제 불가 |
-
----
-
 ## 채팅방
 
 ### 에러 코드 (Room)
@@ -192,7 +54,6 @@ DELETE /profiles/{profileId}
 | 코드 | HTTP | 설명 |
 |------|------|------|
 | `R001` | 404 | 채팅방 없음 |
-| `R002` | 404 | 대상 유저의 프로필 없음 (한 번도 로그인하지 않은 유저 — profiles 미존재) |
 | `R003` | 409 | 이미 참여 중 |
 | `R004` | 409 | 인원 초과 |
 | `R005` | 400 | 비밀번호 불일치 |
@@ -206,7 +67,7 @@ DELETE /profiles/{profileId}
 ### DM 채팅방 생성
 
 > 동일 두 사용자 간 DM이 이미 존재하면 기존 방을 반환 (find-or-create). 항상 201 반환.
-> 상대방 존재 여부는 `profiles` 테이블 기준으로 검증한다.
+> 방 입장 시 자동으로 프로필이 생성된다.
 
 ```
 POST /rooms/dm
@@ -216,11 +77,9 @@ POST /rooms/dm
 ```json
 {
   "targetUserId": "string",
-  "profileId": 1
+  "nickname": "string"
 }
 ```
-
-> `profileId` 필수. 미입력 시 `C001` 반환.
 
 **Response** `201 Created`
 ```json
@@ -230,11 +89,6 @@ POST /rooms/dm
   "roomKey": "dm:hash",
   "createdAt": "2026-05-22T00:00:00Z"
 }
-```
-
-| 에러 코드 | 설명 |
-|-----------|------|
-| `R002` | 대상 유저의 프로필 없음 (한 번도 로그인하지 않은 유저) |
 
 ---
 
@@ -248,11 +102,9 @@ POST /rooms/group
 ```json
 {
   "name": "string",
-  "profileId": 1
+  "nickname": "string"
 }
 ```
-
-> `profileId` 필수. 미입력 시 `C001` 반환.
 
 **Response** `201 Created`
 ```json
@@ -278,11 +130,11 @@ POST /rooms/public
 {
   "name": "string",
   "password": "string | null",
-  "profileId": 1
+  "nickname": "string"
 }
 ```
 
-> `profileId` 필수. `password: null` 또는 미입력 시 비밀번호 없음.
+> `password: null` 또는 미입력 시 비밀번호 없음.
 
 **Response** `201 Created`
 ```json
@@ -403,7 +255,7 @@ POST /rooms/{roomId}/join
 ```json
 {
   "password": "string | null",
-  "profileId": 1
+  "nickname": "string"
 }
 ```
 
@@ -538,7 +390,7 @@ GET /rooms/{roomId}/members
 
 ---
 
-### 채팅방 프로필 변경
+### 채팅방 닉네임 변경
 
 ```
 PATCH /rooms/{roomId}/members/me/profile
@@ -547,7 +399,7 @@ PATCH /rooms/{roomId}/members/me/profile
 **Request Body**
 ```json
 {
-  "profileId": 2
+  "nickname": "string"
 }
 ```
 
@@ -561,7 +413,7 @@ PATCH /rooms/{roomId}/members/me/profile
 
 > **구현 메모 — GROUP 재참여**
 > 초대 수락으로 GROUP에 재참여 시 `chat_room_members`의 기존 레코드를 재사용한다.
-> `(room_id, user_id)` UNIQUE 제약으로 새 레코드 삽입 불가. `left_at = NULL`로 리셋.
+> `(room_id, user_id)` UNIQUE 제약으로 새 레코드 삽입 불가. `left_at = NULL`로 리셋, `profile_id`를 새로 생성된 프로필 ID로 갱신.
 
 ---
 
@@ -654,12 +506,11 @@ POST /invitations/{invitationId}/accept
 **Request Body**
 ```json
 {
-  "profileId": 1
+  "nickname": "string"
 }
 ```
 
-> `profileId` 필수. 미입력 시 `C001` 반환.
-> GROUP 재참여 시 `left_at = NULL` 리셋 후 해당 profileId로 갱신.
+> GROUP 재참여 시 새 프로필 생성 후 `left_at = NULL` 리셋.
 
 **Response** `200 OK`
 
@@ -771,11 +622,9 @@ POST /invite-links/{token}/join
 **Request Body**
 ```json
 {
-  "profileId": 1
+  "nickname": "string"
 }
 ```
-
-> `profileId` 필수. 미입력 시 `C001` 반환.
 
 **Response** `200 OK`
 ```json
