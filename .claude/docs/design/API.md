@@ -535,7 +535,20 @@ PATCH /rooms/{roomId}/members/me/profile
 
 ## 초대
 
+### 에러 코드 (Invitation)
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `I001` | 404 | 초대 없음 |
+| `I002` | 409 | 이미 처리된 초대 (ACCEPTED 또는 REJECTED) |
+| `I003` | 409 | 이미 참여 중인 사용자 |
+| `I004` | 409 | PENDING 상태의 초대 이미 존재 |
+
+---
+
 ### 초대 발송 (방장 전용)
+
+> DM 채팅방은 초대 불가. 강퇴된 사용자도 초대로 재참여 가능.
 
 ```
 POST /rooms/{roomId}/invitations
@@ -561,13 +574,16 @@ POST /rooms/{roomId}/invitations
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `I001` | 이미 참여 중인 사용자 |
-| `I002` | 이미 PENDING 상태의 초대 존재 |
-| `I003` | 강퇴된 사용자는 초대 불가 |
+| `R001` | 채팅방 없음 |
+| `R007` | 방장 권한 없음 |
+| `I003` | 이미 참여 중인 사용자 |
+| `I004` | PENDING 초대 이미 존재 |
 
 ---
 
 ### 내 초대 목록 조회
+
+> 내가 받은 초대 목록. `status` 미지정 시 전체 반환.
 
 ```
 GET /invitations?status={status}
@@ -608,12 +624,15 @@ PATCH /invitations/{invitationId}/accept
 }
 ```
 
+> `profileId` 필수. 미입력 시 `C001` 반환.
+> GROUP 재참여 시 `left_at = NULL` 리셋 후 해당 profileId로 갱신.
+
 **Response** `200 OK`
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `I004` | 초대를 찾을 수 없음 |
-| `I005` | 이미 처리된 초대 |
+| `I001` | 초대 없음 |
+| `I002` | 이미 처리된 초대 |
 
 ---
 
@@ -624,6 +643,11 @@ PATCH /invitations/{invitationId}/reject
 ```
 
 **Response** `200 OK`
+
+| 에러 코드 | 설명 |
+|-----------|------|
+| `I001` | 초대 없음 |
+| `I002` | 이미 처리된 초대 |
 
 ---
 
