@@ -774,9 +774,20 @@ DELETE /rooms/{roomId}/invite-links/{linkId}
 
 ## 메시지
 
+### 에러 코드 (Message)
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `M001` | 404 | 메시지 없음 |
+| `M002` | 403 | 본인 메시지가 아님 |
+
+---
+
 ### 메시지 히스토리 조회
 
-> DM: `hidden_at` 이전 메시지 제외. 커서 기반 페이징.
+> - 커서 기반 페이징. `before` 미지정 시 최신 메시지부터.
+> - DM: `hidden_at` 이전 메시지는 서버가 자동 제외.
+> - 철회된 메시지(`deleted_at IS NOT NULL`)는 응답에서 완전 제외.
 
 ```
 GET /rooms/{roomId}/messages?before={messageId}&size={size}
@@ -808,9 +819,15 @@ GET /rooms/{roomId}/messages?before={messageId}&size={size}
 }
 ```
 
+| 에러 코드 | 설명 |
+|-----------|------|
+| `R001` | 채팅방 없음 |
+
 ---
 
 ### 메시지 수정
+
+> 본인 메시지만 수정 가능. 수정 시간 제한 없음. 수정 시 `is_edited = true` 로 마킹.
 
 ```
 PATCH /messages/{messageId}
@@ -827,29 +844,32 @@ PATCH /messages/{messageId}
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `M001` | 메시지를 찾을 수 없음 |
+| `M001` | 메시지 없음 |
 | `M002` | 본인 메시지가 아님 |
 
 ---
 
 ### 메시지 철회
 
+> 소프트 딜리트 (`deleted_at` 마킹). 조회 응답에서 완전 제외.
+> 철회 이벤트는 WebSocket으로 실시간 전달 → 클라이언트가 UI에서 제거.
+
 ```
 DELETE /messages/{messageId}
 ```
-
-> 소프트 딜리트 (`deleted_at` 마킹). 다른 참여자에게 노출 안 됨.
 
 **Response** `204 No Content`
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `M001` | 메시지를 찾을 수 없음 |
+| `M001` | 메시지 없음 |
 | `M002` | 본인 메시지가 아님 |
 
 ---
 
 ### 읽음 처리
+
+> WebSocket 연결 중에는 STOMP SEND로도 처리 가능. REST는 백그라운드·재연결 시 사용.
 
 ```
 POST /rooms/{roomId}/messages/read
@@ -863,6 +883,10 @@ POST /rooms/{roomId}/messages/read
 ```
 
 **Response** `200 OK`
+
+| 에러 코드 | 설명 |
+|-----------|------|
+| `R001` | 채팅방 없음 |
 
 ---
 
