@@ -1090,6 +1090,7 @@ Authorization: Bearer {JWT}
 ```
 
 > 인증 실패 시 STOMP ERROR frame 반환 후 연결 종료.
+> CONNECT 성공 직후 서버가 PENDING 상태의 초대 목록을 `/user/queue/notifications`로 자동 푸시.
 
 ---
 
@@ -1107,13 +1108,28 @@ SEND /app/rooms/{roomId}/messages
 **브로드캐스트** → `/topic/rooms/{roomId}`
 ```json
 {
+  "type": "MESSAGE",
   "id": 1,
   "senderId": "string",
   "senderNickname": "string",
   "content": "string",
-  "type": "TEXT",
+  "messageType": "TEXT",
   "isEdited": false,
   "createdAt": "2026-05-22T00:00:00Z"
+}
+```
+
+---
+
+### 메시지 철회 이벤트 수신
+
+> REST API(`DELETE /messages/{id}`) 호출 시 서버가 해당 방 참여자 전원에게 브로드캐스트.
+
+**브로드캐스트** → `/topic/rooms/{roomId}`
+```json
+{
+  "type": "MESSAGE_DELETED",
+  "messageId": 42
 }
 ```
 
@@ -1133,6 +1149,8 @@ SEND /app/rooms/{roomId}/read
 
 ### heartbeat
 
+> 권장 주기: **30초**. TTL은 60초이며, 30초 주기로 갱신하면 네트워크 지연에 안전한 마진 확보.
+
 ```
 SEND /app/presence/heartbeat
 ```
@@ -1145,7 +1163,7 @@ SEND /app/presence/heartbeat
 SUBSCRIBE /user/queue/notifications
 ```
 
-**초대 알림 payload**
+**초대 알림 payload** (실시간 수신 및 CONNECT 직후 PENDING 초대 자동 전달)
 ```json
 {
   "type": "INVITATION",
