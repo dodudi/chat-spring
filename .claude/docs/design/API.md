@@ -653,7 +653,18 @@ PATCH /invitations/{invitationId}/reject
 
 ## 초대 URI
 
+### 에러 코드 (InviteLink)
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `L001` | 410 | 만료된 초대 링크 |
+| `L002` | 410 | 비활성화된 초대 링크 |
+
+---
+
 ### 초대 URI 생성 (방장 전용)
+
+> GROUP/PUBLIC 채팅방만 가능. 생성 개수 제한 없음. `expiresAt: null` 시 만료 없음.
 
 ```
 POST /rooms/{roomId}/invite-links
@@ -665,8 +676,6 @@ POST /rooms/{roomId}/invite-links
   "expiresAt": "2026-06-01T00:00:00Z | null"
 }
 ```
-
-> `expiresAt: null` 시 만료 없음.
 
 **Response** `201 Created`
 ```json
@@ -680,9 +689,16 @@ POST /rooms/{roomId}/invite-links
 }
 ```
 
+| 에러 코드 | 설명 |
+|-----------|------|
+| `R001` | 채팅방 없음 |
+| `R007` | 방장 권한 없음 |
+
 ---
 
 ### 초대 URI 목록 조회 (방장 전용)
+
+> 활성화된 링크(`is_active = true`)만 반환.
 
 ```
 GET /rooms/{roomId}/invite-links
@@ -694,19 +710,23 @@ GET /rooms/{roomId}/invite-links
   {
     "id": 1,
     "token": "string",
-    "inviteUrl": "string",
+    "inviteUrl": "/api/v1/invite-links/{token}/join",
     "expiresAt": "2026-06-01T00:00:00Z | null",
-    "isActive": true,
     "createdAt": "2026-05-22T00:00:00Z"
   }
 ]
 ```
 
+| 에러 코드 | 설명 |
+|-----------|------|
+| `R001` | 채팅방 없음 |
+| `R007` | 방장 권한 없음 |
+
 ---
 
 ### 초대 URI로 채팅방 입장
 
-> 비밀번호 생략 가능. 만료·비활성 토큰은 에러.
+> 비밀번호 입력 생략 가능. 이미 참여 중이면 에러 없이 200 반환.
 
 ```
 POST /invite-links/{token}/join
@@ -719,6 +739,8 @@ POST /invite-links/{token}/join
 }
 ```
 
+> `profileId` 필수. 미입력 시 `C001` 반환.
+
 **Response** `200 OK`
 ```json
 {
@@ -729,8 +751,9 @@ POST /invite-links/{token}/join
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `L001` | 유효하지 않은 토큰 (만료 또는 비활성) |
-| `R005` | 최대 인원 초과 |
+| `L001` | 만료된 초대 링크 |
+| `L002` | 비활성화된 초대 링크 |
+| `R004` | 인원 초과 |
 
 ---
 
@@ -741,6 +764,11 @@ DELETE /rooms/{roomId}/invite-links/{linkId}
 ```
 
 **Response** `204 No Content`
+
+| 에러 코드 | 설명 |
+|-----------|------|
+| `R001` | 채팅방 없음 |
+| `R007` | 방장 권한 없음 |
 
 ---
 
