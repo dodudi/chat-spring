@@ -63,8 +63,9 @@ Table invitations {
   updated_at timestamptz  [not null, default: `NOW()`]
 
   indexes {
-    invitee_id [name: 'idx_invitations_invitee_id']
-    room_id    [name: 'idx_invitations_room_id']
+    invitee_id         [name: 'idx_invitations_invitee_id']
+    room_id            [name: 'idx_invitations_room_id']
+    (room_id, invitee_id) [unique, name: 'uidx_invitations_pending', note: 'partial: WHERE status = PENDING']
   }
 }
 

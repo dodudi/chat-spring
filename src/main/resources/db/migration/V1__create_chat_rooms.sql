@@ -83,6 +83,7 @@ CREATE TABLE invitations
 
 CREATE INDEX idx_invitations_invitee_id ON invitations (invitee_id);
 CREATE INDEX idx_invitations_room_id ON invitations (room_id);
+CREATE UNIQUE INDEX uidx_invitations_pending ON invitations (room_id, invitee_id) WHERE status = 'PENDING';
 
 -- =============================================
 -- 메시지
