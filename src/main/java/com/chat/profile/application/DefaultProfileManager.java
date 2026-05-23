@@ -7,6 +7,7 @@ import com.chat.profile.dto.CreateProfileRequest;
 import com.chat.profile.dto.ProfileResponse;
 import com.chat.profile.dto.UpdateProfileRequest;
 import com.chat.profile.infrastructure.ProfileRepository;
+import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.List;
 public class DefaultProfileManager implements ProfileManager {
 
     private final ProfileRepository profileRepository;
+    private final ChatRoomMemberRepository chatRoomMemberRepository;
 
     @Override
     public List<ProfileResponse> getMyProfiles(String userId) {
@@ -47,7 +49,9 @@ public class DefaultProfileManager implements ProfileManager {
     @Transactional
     public void deleteProfile(String userId, Long profileId) {
         Profile profile = findOwnProfile(userId, profileId);
-        // TODO: P003 체크 — ChatRoomMember 도메인 구현 후 추가
+        if (chatRoomMemberRepository.existsByProfileId(profileId)) {
+            throw new AppException(ErrorCode.PROFILE_IN_USE);
+        }
         profileRepository.delete(profile);
     }
 

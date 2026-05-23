@@ -15,4 +15,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
     @Query("SELECT p FROM Profile p WHERE p.id = :id AND p.userId = :userId")
     Optional<Profile> findByIdAndUserId(@Param("id") Long id, @Param("userId") String userId);
+
+    @Query("SELECT p FROM Profile p WHERE p.userId = :userId ORDER BY p.createdAt ASC LIMIT 1")
+    Optional<Profile> findFirstByUserId(@Param("userId") String userId);
 }
