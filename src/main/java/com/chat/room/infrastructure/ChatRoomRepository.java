@@ -20,7 +20,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, UUID> {
             SELECT r FROM ChatRoom r
             WHERE EXISTS (
                 SELECT 1 FROM ChatRoomMember m
-                WHERE m.roomId = r.id AND m.userId = :userId
+                WHERE m.roomId = r.id AND m.userId = :userId AND m.leftAt IS NULL AND m.kickedAt IS NULL
             )
             AND (:groupId IS NULL OR EXISTS (
                 SELECT 1 FROM RoomGroupMembership g

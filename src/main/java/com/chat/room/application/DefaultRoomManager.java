@@ -23,6 +23,7 @@ import com.chat.room.dto.RoomResponse;
 import com.chat.room.dto.RoomSummaryResponse;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
+import com.chat.room.infrastructure.RoomMemberCountProjection;
 import com.chat.room.infrastructure.RoomGroupMembershipRepository;
 import com.chat.user.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -117,6 +118,9 @@ public class DefaultRoomManager implements RoomManager {
     public RoomDetailResponse getRoomDetail(String userId, UUID roomId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+        if (room.getType() != RoomType.PUBLIC && !chatRoomMemberRepository.existsActiveMember(roomId, userId)) {
+            throw new AppException(ErrorCode.FORBIDDEN);
+        }
         long memberCount = chatRoomMemberRepository.countByRoomId(roomId);
         return new RoomDetailResponse(
                 room.getId(),
@@ -132,7 +136,7 @@ public class DefaultRoomManager implements RoomManager {
         Page<ChatRoom> result = chatRoomRepository.searchPublicRooms(name, PageRequest.of(page, size));
         List<UUID> roomIds = result.getContent().stream().map(ChatRoom::getId).toList();
         Map<UUID, Long> countMap = chatRoomMemberRepository.countByRoomIds(roomIds).stream()
-                .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));
+                .collect(Collectors.toMap(RoomMemberCountProjection::getRoomId, RoomMemberCountProjection::getMemberCount));
         List<PublicRoomSummaryResponse> content = result.getContent().stream()
                 .map(room -> new PublicRoomSummaryResponse(
                         room.getId(),
