@@ -1,5 +1,7 @@
 -- chat_room_members.profile_id: NOT NULL 강제
 -- 채팅방 입장 시 항상 profileId를 선택하므로 NULL 불허
+-- profile_id 없는 고아 멤버 row를 먼저 제거한 후 NOT NULL 적용
+DELETE FROM chat_room_members WHERE profile_id IS NULL;
 ALTER TABLE chat_room_members ALTER COLUMN profile_id SET NOT NULL;
 
 -- messages.profile_id: ON DELETE SET NULL 변경

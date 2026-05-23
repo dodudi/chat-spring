@@ -8,6 +8,7 @@ import com.chat.user.domain.User;
 import com.chat.user.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,9 +28,14 @@ public class DefaultUserInitializer implements UserInitializer {
         if (userRepository.existsById(userId)) {
             return;
         }
-        userRepository.save(User.create(userId));
-        profileRepository.save(Profile.createDefault(userId));
-        userGroupRepository.save(UserGroup.createDefault(userId));
-        log.info("[USER_INIT] userId={}", userId);
+        try {
+            userRepository.save(User.create(userId));
+            profileRepository.save(Profile.createDefault(userId));
+            userGroupRepository.save(UserGroup.createDefault(userId));
+            log.info("[USER_INIT] userId={}", userId);
+        } catch (DataIntegrityViolationException e) {
+            // 동시 요청으로 인한 중복 생성 시도 — 선행 트랜잭션이 이미 초기화함
+            log.debug("[USER_INIT_SKIP] userId={} concurrent init ignored", userId);
+        }
     }
 }

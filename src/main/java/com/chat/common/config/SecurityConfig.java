@@ -65,12 +65,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .forEach(config::addAllowedOriginPattern);
+        boolean hasWildcard = false;
+        for (String origin : allowedOrigins.split(",")) {
+            String trimmed = origin.trim();
+            config.addAllowedOriginPattern(trimmed);
+            if ("*".equals(trimmed)) {
+                hasWildcard = true;
+            }
+        }
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");
-        config.setAllowCredentials(true);
+        // wildcard origin과 credentials는 함께 사용 불가 (브라우저 차단)
+        if (!hasWildcard) {
+            config.setAllowCredentials(true);
+        }
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
