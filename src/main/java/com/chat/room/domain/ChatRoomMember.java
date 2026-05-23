@@ -1,12 +1,21 @@
 package com.chat.room.domain;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "chat_room_members")
@@ -18,22 +27,32 @@ public class ChatRoomMember {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
+    @Column(name = "room_id", nullable = false)
+    private UUID roomId;
 
-    @Column(name = "user_id", nullable = false, length = 255)
+    @Column(name = "user_id", nullable = false)
     private String userId;
 
-    @Column(name = "joined_at", nullable = false)
-    private OffsetDateTime joinedAt;
+    @Column(name = "profile_id", nullable = false)
+    private Long profileId;
 
-    @Column(name = "last_read_message_id")
-    private Long lastReadMessageId;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MemberRole role;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active;
+    @Column(name = "is_hidden", nullable = false)
+    private boolean isHidden;
 
+    @Column(name = "hidden_at")
+    private OffsetDateTime hiddenAt;
+
+    @Column(name = "left_at")
+    private OffsetDateTime leftAt;
+
+    @Column(name = "kicked_at")
+    private OffsetDateTime kickedAt;
+
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -41,26 +60,16 @@ public class ChatRoomMember {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    public static ChatRoomMember create(ChatRoom room, String userId) {
+    public static ChatRoomMember create(UUID roomId, String userId, Long profileId, MemberRole role) {
         ChatRoomMember member = new ChatRoomMember();
-        member.room = room;
+        member.roomId = roomId;
         member.userId = userId;
-        member.joinedAt = OffsetDateTime.now();
-        member.active = true;
-        member.createdAt = OffsetDateTime.now();
+        member.profileId = profileId;
+        member.role = role;
         return member;
     }
 
-    public void updateLastRead(Long messageId) {
-        this.lastReadMessageId = messageId;
-    }
-
-    public void leave() {
-        this.active = false;
-    }
-
-    public void rejoin() {
-        this.active = true;
-        this.joinedAt = OffsetDateTime.now();
+    public void updateProfileId(Long profileId) {
+        this.profileId = profileId;
     }
 }

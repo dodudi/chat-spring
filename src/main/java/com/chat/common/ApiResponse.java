@@ -1,30 +1,16 @@
 package com.chat.common;
 
-import com.chat.common.exception.ErrorCode;
-import lombok.Getter;
-
-@Getter
-public class ApiResponse<T> {
-
-    private final String code;
-    private final String message;
-    private final T data;
-
-    private ApiResponse(String code, String message, T data) {
-        this.code = code;
-        this.message = message;
-        this.data = data;
-    }
+public record ApiResponse<T>(String code, String message, T data) {
 
     public static <T> ApiResponse<T> ok(T data) {
-        return new ApiResponse<>("SUCCESS", "OK", data);
+        return new ApiResponse<>("SUCCESS", null, data);
     }
 
-    public static ApiResponse<Void> fail(ErrorCode errorCode) {
-        return new ApiResponse<>(errorCode.getCode(), errorCode.getMessage(), null);
+    public static ApiResponse<Void> ok() {
+        return new ApiResponse<>("SUCCESS", null, null);
     }
 
-    public static ApiResponse<Void> fail(ErrorCode errorCode, String message) {
-        return new ApiResponse<>(errorCode.getCode(), message, null);
+    public static ApiResponse<Void> error(String code, String message) {
+        return new ApiResponse<>(code, message, null);
     }
 }

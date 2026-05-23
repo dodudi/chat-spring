@@ -46,6 +46,12 @@
 | `C004` | 404 | 리소스 없음 |
 | `C005` | 500 | 서버 내부 오류 |
 
+### 사용자 에러 코드
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `U001` | 404 | 대상 사용자 없음 |
+
 ---
 
 ## 프로필
@@ -55,40 +61,12 @@
 | 코드 | HTTP | 설명 |
 |------|------|------|
 | `P001` | 404 | 프로필 없음 |
-| `P002` | 403 | 사용 중인 프로필 삭제 불가 (현재 활성 멤버 기준) |
-| `P003` | 409 | 최대 프로필 수 초과 (기본값: 5개) |
-| `P004` | 409 | 닉네임 중복 (서비스 전체 고유) |
+| `P002` | 403 | 본인 프로필이 아님 |
+| `P003` | 409 | 채팅방에서 사용 중인 프로필 (삭제 불가) |
 
 ---
 
-### 기본 프로필 생성 (최초 로그인)
-
-> 클라이언트가 로그인 직후 호출. 기본 프로필이 없으면 생성(201), 이미 있으면 **body 무시 후 기존 프로필 반환(200)**.
-> 닉네임은 서비스 전체 고유. 중복 시 `P004` 반환 (기존 프로필이 없는 경우에만 검증).
-
-```
-POST /profiles/default
-```
-
-**Request Body**
-```json
-{
-  "nickname": "string"
-}
-```
-
-**Response** `201 Created` (신규 생성) / `200 OK` (기존 반환)
-```json
-{
-  "id": 1,
-  "nickname": "string",
-  "createdAt": "2026-05-22T00:00:00Z"
-}
-```
-
----
-
-### 프로필 목록 조회
+### 내 프로필 목록 조회
 
 ```
 GET /profiles
@@ -108,8 +86,6 @@ GET /profiles
 ---
 
 ### 프로필 생성
-
-> 닉네임 서비스 전체 고유 (다른 사용자와 중복 불가). 최대 5개 초과 시 `P003` 반환.
 
 ```
 POST /profiles
@@ -131,14 +107,11 @@ POST /profiles
 }
 ```
 
-| 에러 코드 | 설명 |
-|-----------|------|
-| `P003` | 최대 프로필 수 초과 |
-| `P004` | 닉네임 중복 |
-
 ---
 
-### 프로필 수정
+### 프로필 닉네임 수정
+
+> 해당 프로필을 사용 중인 모든 채팅방에 즉시 반영된다.
 
 ```
 PATCH /profiles/{profileId}
@@ -152,25 +125,17 @@ PATCH /profiles/{profileId}
 ```
 
 **Response** `200 OK`
-```json
-{
-  "id": 1,
-  "nickname": "string",
-  "createdAt": "2026-05-22T00:00:00Z"
-}
-```
 
 | 에러 코드 | 설명 |
 |-----------|------|
 | `P001` | 프로필 없음 |
-| `P004` | 닉네임 중복 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
 ### 프로필 삭제
 
-> 현재 활성 상태(`left_at IS NULL AND kicked_at IS NULL`)인 채팅방에서 사용 중이면 삭제 불가.
-> 퇴장하거나 강퇴된 방에서 사용하던 프로필은 삭제 가능.
+> 채팅방에서 사용 중인 프로필은 삭제할 수 없다.
 
 ```
 DELETE /profiles/{profileId}
@@ -181,7 +146,8 @@ DELETE /profiles/{profileId}
 | 에러 코드 | 설명 |
 |-----------|------|
 | `P001` | 프로필 없음 |
-| `P002` | 사용 중인 프로필 삭제 불가 |
+| `P002` | 본인 프로필이 아님 |
+| `P003` | 채팅방에서 사용 중인 프로필 |
 
 ---
 
@@ -192,7 +158,6 @@ DELETE /profiles/{profileId}
 | 코드 | HTTP | 설명 |
 |------|------|------|
 | `R001` | 404 | 채팅방 없음 |
-| `R002` | 404 | 대상 유저의 프로필 없음 (한 번도 로그인하지 않은 유저 — profiles 미존재) |
 | `R003` | 409 | 이미 참여 중 |
 | `R004` | 409 | 인원 초과 |
 | `R005` | 400 | 비밀번호 불일치 |
@@ -200,13 +165,14 @@ DELETE /profiles/{profileId}
 | `R007` | 403 | 방장 권한 없음 |
 | `R008` | 404 | 대상 멤버 없음 |
 | `R009` | 404 | 빈 방 — 참여 불가 |
+| `R010` | 403 | 지원하지 않는 채팅방 타입 (예: DM 방 초대 시도) |
 
 ---
 
 ### DM 채팅방 생성
 
 > 동일 두 사용자 간 DM이 이미 존재하면 기존 방을 반환 (find-or-create). 항상 201 반환.
-> 상대방 존재 여부는 `profiles` 테이블 기준으로 검증한다.
+> 기존 방 반환 시에도 요청한 `profileId`로 해당 사용자의 `chat_room_members.profile_id`를 갱신한다.
 
 ```
 POST /rooms/dm
@@ -220,8 +186,6 @@ POST /rooms/dm
 }
 ```
 
-> `profileId` 필수. 미입력 시 `C001` 반환.
-
 **Response** `201 Created`
 ```json
 {
@@ -234,7 +198,9 @@ POST /rooms/dm
 
 | 에러 코드 | 설명 |
 |-----------|------|
-| `R002` | 대상 유저의 프로필 없음 (한 번도 로그인하지 않은 유저) |
+| `U001` | 대상 사용자 없음 |
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
@@ -252,8 +218,6 @@ POST /rooms/group
 }
 ```
 
-> `profileId` 필수. 미입력 시 `C001` 반환.
-
 **Response** `201 Created`
 ```json
 {
@@ -264,6 +228,11 @@ POST /rooms/group
   "createdAt": "2026-05-22T00:00:00Z"
 }
 ```
+
+| 에러 코드 | 설명 |
+|-----------|------|
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
@@ -282,7 +251,7 @@ POST /rooms/public
 }
 ```
 
-> `profileId` 필수. `password: null` 또는 미입력 시 비밀번호 없음.
+> `password: null` 또는 미입력 시 비밀번호 없음.
 
 **Response** `201 Created`
 ```json
@@ -295,6 +264,11 @@ POST /rooms/public
   "createdAt": "2026-05-22T00:00:00Z"
 }
 ```
+
+| 에러 코드 | 설명 |
+|-----------|------|
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
@@ -417,6 +391,8 @@ POST /rooms/{roomId}/join
 | `R005` | 비밀번호 불일치 |
 | `R006` | 강퇴된 사용자 |
 | `R009` | 빈 방 — 참여 불가 |
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
@@ -463,7 +439,8 @@ DELETE /rooms/{roomId}/members/me
 > - DM: 숨김 처리 (`is_hidden = true`, `hidden_at` 갱신)
 > - GROUP: `left_at` 갱신 (초대로 재참여 가능)
 > - PUBLIC: 레코드 삭제 (자유 재참여 가능)
-> - 방장 나가기 시 참여 순서 기준 다음 멤버에게 자동 위임. 마지막 참여자면 빈 방 상태.
+> - 방장 나가기 시 `chat_room_members.created_at` 오름차순 기준 다음 멤버에게 자동 위임. 마지막 참여자면 빈 방 상태.
+> - 나가기 시 해당 사용자의 `room_group_memberships` 연결을 모두 자동 삭제한다.
 
 **Response** `204 No Content`
 
@@ -538,10 +515,12 @@ GET /rooms/{roomId}/members
 
 ---
 
-### 채팅방 프로필 변경
+### 채팅방 사용 프로필 변경
+
+> 현재 방에서 사용 중인 프로필을 다른 프로필로 교체한다.
 
 ```
-PATCH /rooms/{roomId}/members/me/profile
+PUT /rooms/{roomId}/members/me/profile
 ```
 
 **Request Body**
@@ -556,12 +535,16 @@ PATCH /rooms/{roomId}/members/me/profile
 | 에러 코드 | 설명 |
 |-----------|------|
 | `R001` | 채팅방 없음 |
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
 > **구현 메모 — GROUP 재참여**
 > 초대 수락으로 GROUP에 재참여 시 `chat_room_members`의 기존 레코드를 재사용한다.
-> `(room_id, user_id)` UNIQUE 제약으로 새 레코드 삽입 불가. `left_at = NULL`로 리셋.
+> `(room_id, user_id)` UNIQUE 제약으로 새 레코드 삽입 불가.
+> `left_at = NULL`, `kicked_at = NULL`로 리셋, `profile_id`를 요청의 `profileId`로 갱신.
+> (`kicked_at` 초기화: 방장이 재초대한 이상 강퇴 이력 해소로 처리)
 
 ---
 
@@ -608,6 +591,8 @@ POST /rooms/{roomId}/invitations
 |-----------|------|
 | `R001` | 채팅방 없음 |
 | `R007` | 방장 권한 없음 |
+| `R010` | DM 채팅방 — 초대 불가 |
+| `U001` | 대상 사용자 없음 |
 | `I003` | 이미 참여 중인 사용자 |
 | `I004` | PENDING 초대 이미 존재 |
 
@@ -658,8 +643,9 @@ POST /invitations/{invitationId}/accept
 }
 ```
 
-> `profileId` 필수. 미입력 시 `C001` 반환.
-> GROUP 재참여 시 `left_at = NULL` 리셋 후 해당 profileId로 갱신.
+> GROUP 재참여 시 기존 레코드를 재사용: `left_at = NULL`, `kicked_at = NULL` 리셋, `profile_id`를 선택한 프로필로 갱신.
+> 동시에 해당 채팅방을 사용자의 기본 그룹(`is_default = true`)에 자동으로 재연결(`room_group_memberships` 레코드 삽입).
+> 기본 그룹이 없으면 이 단계는 건너뛴다.
 
 **Response** `200 OK`
 
@@ -667,6 +653,10 @@ POST /invitations/{invitationId}/accept
 |-----------|------|
 | `I001` | 초대 없음 |
 | `I002` | 이미 처리된 초대 |
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
+| `R004` | 인원 초과 (초대~수락 사이 방이 꽉 찬 경우) |
+| `R009` | 빈 방 (초대~수락 사이 방이 빈 방이 된 경우) |
 
 ---
 
@@ -763,6 +753,10 @@ GET /rooms/{roomId}/invite-links
 ### 초대 URI로 채팅방 입장
 
 > 비밀번호 입력 생략 가능. 이미 참여 중이면 에러 없이 200 반환.
+> 강퇴(`kicked_at`) 또는 자발 퇴장(`left_at`) 사용자도 초대 URI를 통해 재참여 가능하다 — `R006` 미적용.
+> GROUP 재참여 시 기존 레코드를 재사용: `left_at = NULL`, `kicked_at = NULL` 리셋, `profile_id`를 선택한 프로필로 갱신.
+> 동시에 해당 채팅방을 사용자의 기본 그룹(`is_default = true`)에 자동으로 재연결(`room_group_memberships` 레코드 삽입).
+> 기본 그룹이 없으면 이 단계는 건너뛴다.
 
 ```
 POST /invite-links/{token}/join
@@ -774,8 +768,6 @@ POST /invite-links/{token}/join
   "profileId": 1
 }
 ```
-
-> `profileId` 필수. 미입력 시 `C001` 반환.
 
 **Response** `200 OK`
 ```json
@@ -790,6 +782,9 @@ POST /invite-links/{token}/join
 | `L001` | 만료된 초대 링크 |
 | `L002` | 비활성화된 초대 링크 |
 | `R004` | 인원 초과 |
+| `R009` | 빈 방 — 참여 불가 |
+| `P001` | 프로필 없음 |
+| `P002` | 본인 프로필이 아님 |
 
 ---
 
@@ -872,7 +867,7 @@ PATCH /messages/{messageId}
 **Request Body**
 ```json
 {
-  "content": "string"
+  "content": "string"   // 최대 1,000자
 }
 ```
 
@@ -882,6 +877,7 @@ PATCH /messages/{messageId}
 |-----------|------|
 | `M001` | 메시지 없음 |
 | `M002` | 본인 메시지가 아님 |
+| `C001` | 유효성 오류 (1,000자 초과 등) |
 
 ---
 
@@ -1105,11 +1101,14 @@ Authorization: Bearer {JWT}
 
 ### 메시지 전송
 
+> DM 방에서 메시지를 전송하면 서버가 `is_hidden = true`인 상대 멤버의 숨김을 자동 해제한다 (`is_hidden = false`).
+> 숨김 해제된 멤버는 이후 방 목록 조회 시 해당 DM 방이 다시 노출된다.
+
 ```
 SEND /app/rooms/{roomId}/messages
 
 {
-  "content": "string",
+  "content": "string",   // 최대 1,000자
   "type": "TEXT"
 }
 ```
@@ -1125,6 +1124,51 @@ SEND /app/rooms/{roomId}/messages
   "messageType": "TEXT",
   "isEdited": false,
   "createdAt": "2026-05-22T00:00:00Z"
+}
+```
+
+---
+
+### 방장 변경 이벤트 수신
+
+> 나가기 자동 위임(`DELETE /rooms/{roomId}/members/me`) 또는 수동 위임(`PUT /rooms/{roomId}/owner`) 시 브로드캐스트.
+
+**브로드캐스트** → `/topic/rooms/{roomId}`
+```json
+{
+  "type": "OWNER_CHANGED",
+  "newOwnerId": "string"
+}
+```
+
+---
+
+### 프로필 닉네임 변경 이벤트 수신
+
+> REST API(`PATCH /profiles/{id}`) 호출 시 해당 프로필을 사용 중인 모든 채팅방 참여자에게 브로드캐스트.
+
+**브로드캐스트** → `/topic/rooms/{roomId}` (프로필 사용 중인 각 방)
+```json
+{
+  "type": "PROFILE_UPDATED",
+  "userId": "string",
+  "nickname": "string"
+}
+```
+
+---
+
+### 메시지 수정 이벤트 수신
+
+> REST API(`PATCH /messages/{id}`) 호출 시 서버가 해당 방 참여자 전원에게 브로드캐스트.
+
+**브로드캐스트** → `/topic/rooms/{roomId}`
+```json
+{
+  "type": "MESSAGE_EDITED",
+  "messageId": 42,
+  "content": "string",
+  "isEdited": true
 }
 ```
 

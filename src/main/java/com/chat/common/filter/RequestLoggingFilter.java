@@ -1,34 +1,32 @@
 package com.chat.common.filter;
 
+import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.UUID;
 
-@Slf4j
 @Component
-public class RequestLoggingFilter extends OncePerRequestFilter {
+@Slf4j
+public class RequestLoggingFilter implements Filter {
 
     private static final String TRACE_ID = "traceId";
-    private static final String TRACE_HEADER = "X-Trace-Id";
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        String traceId = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        MDC.put(TRACE_ID, traceId);
-        response.setHeader(TRACE_HEADER, traceId);
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        MDC.put(TRACE_ID, UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         try {
-            log.debug("[REQUEST] {} {}", request.getMethod(), request.getRequestURI());
-            filterChain.doFilter(request, response);
+            HttpServletRequest http = (HttpServletRequest) request;
+            log.debug("[REQUEST] {} {}", http.getMethod(), http.getRequestURI());
+            chain.doFilter(request, response);
         } finally {
             MDC.remove(TRACE_ID);
         }

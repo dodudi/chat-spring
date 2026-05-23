@@ -1,12 +1,15 @@
 package com.chat.room.infrastructure;
 
 import com.chat.room.domain.ChatRoom;
-import com.chat.room.domain.RoomType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
-public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
+public interface ChatRoomRepository extends JpaRepository<ChatRoom, UUID> {
 
-    Optional<ChatRoom> findByDmUserAAndDmUserBAndType(String dmUserA, String dmUserB, RoomType type);
+    @Query("SELECT r FROM ChatRoom r WHERE r.roomKey = :roomKey")
+    Optional<ChatRoom> findByRoomKey(@Param("roomKey") String roomKey);
 }
