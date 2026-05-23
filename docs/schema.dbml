@@ -1,14 +1,22 @@
 // =============================================
 // 채팅 서비스 DB 스키마
-// V1__create_chat_rooms.sql 기준
+// V6__profile_id_constraints.sql 기준
 // =============================================
+
+// 최초 API 호출 시 JWT sub 기준으로 upsert.
+// DM 생성 시 targetUserId 유효성 검증 및 기본 그룹 자동 생성에 사용.
+Table users {
+  id         varchar(255) [pk, note: 'JWT sub (외부 인증 서버 발급 식별자)']
+  created_at timestamptz  [not null, default: `NOW()`]
+  updated_at timestamptz  [not null, default: `NOW()`]
+}
 
 Table chat_rooms {
   id         uuid         [pk, default: `gen_random_uuid()`]
   type       varchar(50)  [not null, note: 'DM | GROUP | PUBLIC']
   room_key   varchar(255) [not null, unique]
   name       varchar(100) [note: 'DM 방은 null 허용']
-  password   varchar(255)
+  password   varchar(255) [note: 'BCrypt 해싱 저장. PUBLIC 방만 사용. null이면 비밀번호 없음']
   created_by varchar(255) [not null]
   created_at timestamptz  [not null, default: `NOW()`]
   updated_at timestamptz  [not null, default: `NOW()`]
@@ -18,12 +26,18 @@ Table chat_rooms {
   }
 }
 
-// 프로필은 채팅방에 종속 - 방 입장 시 nickname을 지정하면 자동 생성
+// 프로필은 사용자 종속 - 최초 API 호출 시 기본 프로필 1개 자동 생성
+// 채팅방 입장 시 profileId를 선택해서 연결
 Table profiles {
   id         bigint       [pk, increment]
+  user_id    varchar(255) [not null]
   nickname   varchar(50)  [not null]
   created_at timestamptz  [not null, default: `NOW()`]
   updated_at timestamptz  [not null, default: `NOW()`]
+
+  indexes {
+    user_id [name: 'idx_profiles_user_id']
+  }
 }
 
 // DM:     is_hidden(현재 숨김 여부) + hidden_at(나간 시각, 메시지 노출 기준점 - 숨김 해제 후에도 유지)
@@ -33,7 +47,7 @@ Table chat_room_members {
   id         bigint       [pk, increment]
   room_id    uuid         [not null, ref: > chat_rooms.id]
   user_id    varchar(255) [not null]
-  profile_id bigint       [ref: > profiles.id]
+  profile_id bigint       [not null, ref: > profiles.id]
   role       varchar(20)  [not null, default: 'MEMBER', note: 'OWNER | MEMBER']
   is_hidden  boolean      [not null, default: false, note: 'DM: 현재 목록 숨김 여부']
   hidden_at  timestamptz  [note: 'DM: 숨김 처리 시각. 메시지 노출 기준점. 숨김 해제 후에도 유지']
@@ -69,8 +83,8 @@ Table messages {
   id         bigint       [pk, increment]
   room_id    uuid         [not null, ref: > chat_rooms.id]
   sender_id  varchar(255) [not null]
-  profile_id bigint       [ref: > profiles.id]
-  content    text         [not null]
+  profile_id bigint       [ref: > profiles.id, note: 'nullable — 프로필 삭제 시 ON DELETE SET NULL, 닉네임 빈칸 표시']
+  content    text         [not null, note: '최대 1,000자 — 애플리케이션 레벨 @Size(max=1000) 검증']
   type       varchar(20)  [not null, default: 'TEXT', note: 'TEXT | IMAGE | FILE']
   is_edited  boolean      [not null, default: false]
   created_at timestamptz  [not null, default: `NOW()`]
@@ -80,6 +94,7 @@ Table messages {
   indexes {
     room_id              [name: 'idx_messages_room_id']
     (room_id, created_at) [name: 'idx_messages_created_at']
+    (room_id, id)        [name: 'idx_messages_room_id_cursor', note: 'partial: WHERE deleted_at IS NULL — 커서 페이징 최적화']
   }
 }
 

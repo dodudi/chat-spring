@@ -478,3 +478,36 @@ private static OffsetDateTime toOffsetDateTime(Instant instant) {
 }
 ```
 
+---
+
+## #007 2026-05-23 — 프로필 사용자 종속 재설계 (채팅방 종속 → 사용자 종속)
+
+**증상**: 프로필이 채팅방 종속(V3)으로 설계되어 있었으나, 글로벌 프로필 관리(목록 조회·생성·삭제)가 필요한 요구사항과 불일치
+
+**원인**: V3 마이그레이션에서 `profiles.user_id`를 제거하면서 전역 프로필 개념이 사라짐
+
+**해결**:
+- V5 마이그레이션으로 `profiles.user_id` 복원
+- 채팅방 입장 시 `nickname` 전달 방식 → 기존 프로필 `profileId` 선택 방식으로 변경
+- Profile CRUD API 추가 (`GET/POST /profiles`, `PATCH/DELETE /profiles/{id}`)
+- 채팅방 프로필 교체 API 추가 (`PUT /rooms/{roomId}/members/me/profile`)
+- 닉네임 변경 시 해당 프로필 사용 중인 모든 방에 즉시 반영
+
+---
+
+## #006 2026-05-23 — 개발 착수 전 PRD·DB·API 설계 검토 및 결정 사항
+
+**증상**: 개발 전 설계 문서 간 불일치 및 미결 사항 6건 발견
+
+**원인 및 결정**
+
+| 항목 | 결정 |
+|------|------|
+| DM targetUserId 검증 불가 (users 테이블 없음) | `users` 테이블 도입. 최초 API 호출 시 JWT sub upsert. 기본 그룹도 동시 생성. |
+| 기본 그룹 생성 시점 미정 | users upsert와 동일 시점 (최초 API 호출) |
+| 초대 URI + 강퇴 사용자 | 초대 URI는 강퇴 제한 예외 (R006 미적용) |
+| 읽음 커서 NULL (30일 배치 삭제) | NULL = unread count 0 처리 |
+| 방 나가기 시 그룹 연결 | `room_group_memberships` 자동 삭제 |
+| 비밀번호 저장 방식 | BCrypt 해싱 |
+
+**해결**: V4 마이그레이션(users 테이블, 메시지 커서 인덱스), PRD 프로필 섹션 재작성, API.md 에러 코드 및 정책 명세 보완
