@@ -1,6 +1,6 @@
 // =============================================
 // 채팅 서비스 DB 스키마
-// V6__profile_id_constraints.sql 기준
+// V7__profiles_user_id_not_null_guard.sql 기준
 // =============================================
 
 // 최초 API 호출 시 JWT sub 기준으로 upsert.
