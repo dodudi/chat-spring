@@ -1,3 +1,4 @@
+
 # 아키텍처 규칙
 
 ## 패키지 구조
@@ -9,7 +10,7 @@ com.chat/
 ├── common/                  # 도메인 횡단 공통 모듈
 └── {domain}/
     ├── api/                 # Controller
-    ├── application/         # Service 인터페이스 + 구현체
+    ├── application/         # 비즈니스 인터페이스 + 구현체
     ├── domain/              # Entity, 도메인 모델
     ├── dto/                 # Request / Response DTO
     └── infrastructure/      # Repository, 외부 연동 구현체
@@ -25,24 +26,34 @@ api → application → domain
        infrastructure
 ```
 
-- Controller는 Service 인터페이스에만 의존한다. `ServiceImpl` 직접 참조 금지.
+- Controller는 인터페이스에만 의존한다. 구현체 직접 참조 금지.
 - Controller에서 Repository 직접 호출 금지.
 
-## Service 인터페이스 분리
+## 인터페이스·구현체 분리
 
-Service는 반드시 인터페이스(`{Domain}Service`)와 구현체(`{Domain}ServiceImpl`)를 분리한다.
+`application` 레이어는 반드시 인터페이스와 구현체를 분리한다.
+
+### 인터페이스 네이밍 — Spring 스타일, `Service` 접미사 지양
+
+| 패턴 | 예시 | 적합한 경우 |
+|------|------|------------|
+| `-er` / `-or` | `UserInitializer` | 단일 행위 (초기화, 변환 등) |
+| `Manager` | `ProfileManager` | CRUD 관리 |
+| `Operations` | `RedisOperations` | 연산 집합 |
+
+### 구현체 네이밍 — `Default` 접두사, `Impl` 접미사 지양
 
 ```java
 // ✅
-public interface RoomService { ... }
+public interface UserInitializer { ... }
+public class DefaultUserInitializer implements UserInitializer { ... }
 
-@Service
-@Transactional(readOnly = true)
-public class RoomServiceImpl implements RoomService { ... }
+public interface ProfileManager { ... }
+public class DefaultProfileManager implements ProfileManager { ... }
 
-// ❌ 인터페이스 없이 구현체만 존재
-@Service
-public class RoomService { ... }
+// ❌
+public interface UserService { ... }
+public class UserServiceImpl implements UserService { ... }
 ```
 
 ## 레이어별 책임
