@@ -27,6 +27,14 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     @Query("SELECT m FROM ChatRoomMember m WHERE m.roomId = :roomId AND m.userId <> :userId")
     Optional<ChatRoomMember> findOtherMember(@Param("roomId") UUID roomId, @Param("userId") String userId);
 
+    @Query("""
+            SELECT m.roomId AS roomId, p.nickname AS nickname
+            FROM ChatRoomMember m
+            JOIN Profile p ON p.id = m.profileId
+            WHERE m.roomId IN :roomIds AND m.userId <> :userId AND m.leftAt IS NULL AND m.kickedAt IS NULL
+            """)
+    List<DmRoomNameProjection> findDmRoomNames(@Param("roomIds") Collection<UUID> roomIds, @Param("userId") String userId);
+
     @Query("SELECT m.roomId AS roomId, COUNT(m) AS memberCount FROM ChatRoomMember m WHERE m.roomId IN :roomIds GROUP BY m.roomId")
     List<RoomMemberCountProjection> countByRoomIds(@Param("roomIds") Collection<UUID> roomIds);
 }

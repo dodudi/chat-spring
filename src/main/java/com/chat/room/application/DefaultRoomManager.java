@@ -23,6 +23,7 @@ import com.chat.room.dto.RoomResponse;
 import com.chat.room.dto.RoomSummaryResponse;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
+import com.chat.room.infrastructure.DmRoomNameProjection;
 import com.chat.room.infrastructure.RoomMemberCountProjection;
 import com.chat.room.infrastructure.RoomGroupMembershipRepository;
 import com.chat.user.infrastructure.UserRepository;
@@ -104,11 +105,21 @@ public class DefaultRoomManager implements RoomManager {
 
     @Override
     public List<RoomSummaryResponse> getMyRooms(String userId, Long groupId) {
-        return chatRoomRepository.findMyRooms(userId, groupId).stream()
+        List<ChatRoom> rooms = chatRoomRepository.findMyRooms(userId, groupId);
+        List<UUID> dmRoomIds = rooms.stream()
+                .filter(r -> r.getType() == RoomType.DM)
+                .map(ChatRoom::getId)
+                .toList();
+        Map<UUID, String> dmNames = dmRoomIds.isEmpty() ? Map.of() :
+                chatRoomMemberRepository.findDmRoomNames(dmRoomIds, userId).stream()
+                        .collect(Collectors.toMap(DmRoomNameProjection::getRoomId, DmRoomNameProjection::getNickname));
+        return rooms.stream()
                 .map(room -> new RoomSummaryResponse(
                         room.getId(),
                         room.getType().name(),
-                        resolveName(room, userId),
+                        room.getType() == RoomType.DM
+                                ? dmNames.getOrDefault(room.getId(), "알 수 없음")
+                                : room.getName(),
                         null, null, 0,
                         room.getUpdatedAt()))
                 .toList();
