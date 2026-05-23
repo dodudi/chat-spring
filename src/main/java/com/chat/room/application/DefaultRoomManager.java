@@ -34,7 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -128,11 +130,14 @@ public class DefaultRoomManager implements RoomManager {
     @Override
     public PageResponse<PublicRoomSummaryResponse> searchPublicRooms(String name, int page, int size) {
         Page<ChatRoom> result = chatRoomRepository.searchPublicRooms(name, PageRequest.of(page, size));
+        List<UUID> roomIds = result.getContent().stream().map(ChatRoom::getId).toList();
+        Map<UUID, Long> countMap = chatRoomMemberRepository.countByRoomIds(roomIds).stream()
+                .collect(Collectors.toMap(row -> (UUID) row[0], row -> (Long) row[1]));
         List<PublicRoomSummaryResponse> content = result.getContent().stream()
                 .map(room -> new PublicRoomSummaryResponse(
                         room.getId(),
                         room.getName(),
-                        chatRoomMemberRepository.countByRoomId(room.getId()),
+                        countMap.getOrDefault(room.getId(), 0L),
                         room.getPassword() != null))
                 .toList();
         return new PageResponse<>(content, page, size, result.getTotalElements());
