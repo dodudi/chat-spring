@@ -1,4 +1,28 @@
 -- =============================================
+-- 사용자
+-- =============================================
+CREATE TABLE users
+(
+    id         VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =============================================
+-- 프로필 (사용자당 여러 개, 최초 로그인 시 기본 1개 자동 생성)
+-- =============================================
+CREATE TABLE profiles
+(
+    id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id    VARCHAR(255) NOT NULL,
+    nickname   VARCHAR(50)  NOT NULL,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_profiles_user_id ON profiles (user_id);
+
+-- =============================================
 -- 채팅방
 -- =============================================
 CREATE TABLE chat_rooms
@@ -16,20 +40,6 @@ CREATE TABLE chat_rooms
 );
 
 CREATE INDEX idx_chat_rooms_created_by ON chat_rooms (created_by);
-
--- =============================================
--- 프로필 (사용자당 여러 개, 최초 로그인 시 기본 1개 자동 생성)
--- =============================================
-CREATE TABLE profiles
-(
-    id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    user_id    VARCHAR(255) NOT NULL,
-    nickname   VARCHAR(50)  NOT NULL,
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_profiles_user_id ON profiles (user_id);
 
 -- =============================================
 -- 채팅방 참여자
@@ -51,7 +61,7 @@ CREATE TABLE chat_room_members
     id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     room_id    UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
     user_id    VARCHAR(255) NOT NULL,
-    profile_id BIGINT REFERENCES profiles (id),
+    profile_id BIGINT       NOT NULL REFERENCES profiles (id),
     role       VARCHAR(20)  NOT NULL DEFAULT 'MEMBER',
     is_hidden  BOOLEAN      NOT NULL DEFAULT false,
     hidden_at  TIMESTAMPTZ,
@@ -65,60 +75,6 @@ CREATE TABLE chat_room_members
 
 CREATE INDEX idx_members_room_id ON chat_room_members (room_id);
 CREATE INDEX idx_members_user_id ON chat_room_members (user_id);
-
--- =============================================
--- 초대
--- =============================================
-CREATE TABLE invitations
-(
-    id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    room_id    UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
-    inviter_id VARCHAR(255) NOT NULL,
-    invitee_id VARCHAR(255) NOT NULL,
-    status     VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_invitations_status CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED'))
-);
-
-CREATE INDEX idx_invitations_invitee_id ON invitations (invitee_id);
-CREATE INDEX idx_invitations_room_id ON invitations (room_id);
-CREATE UNIQUE INDEX uidx_invitations_pending ON invitations (room_id, invitee_id) WHERE status = 'PENDING';
-
--- =============================================
--- 메시지
--- =============================================
-CREATE TABLE messages
-(
-    id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    room_id    UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
-    sender_id  VARCHAR(255) NOT NULL,
-    profile_id BIGINT REFERENCES profiles (id),
-    content    TEXT         NOT NULL,
-    type       VARCHAR(20)  NOT NULL DEFAULT 'TEXT',
-    is_edited  BOOLEAN      NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ,
-    CONSTRAINT chk_messages_type CHECK (type IN ('TEXT', 'IMAGE', 'FILE'))
-);
-
-CREATE INDEX idx_messages_room_id ON messages (room_id);
-CREATE INDEX idx_messages_created_at ON messages (room_id, created_at);
-
--- =============================================
--- 읽음 커서 (채팅방별 마지막 읽은 메시지)
--- =============================================
-CREATE TABLE room_read_cursors
-(
-    id                   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    room_id              UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
-    user_id              VARCHAR(255) NOT NULL,
-    last_read_message_id BIGINT       REFERENCES messages (id) ON DELETE SET NULL,
-    created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT uidx_read_cursors_room_user UNIQUE (room_id, user_id)
-);
 
 -- =============================================
 -- 사용자 그룹 (채팅방 분류용, 기본 그룹 포함)
@@ -149,11 +105,62 @@ CREATE TABLE room_group_memberships
 );
 
 -- =============================================
+-- 초대
+-- =============================================
+CREATE TABLE invitations
+(
+    id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    room_id    UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
+    inviter_id VARCHAR(255) NOT NULL,
+    invitee_id VARCHAR(255) NOT NULL,
+    status     VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT chk_invitations_status CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED'))
+);
+
+CREATE INDEX idx_invitations_invitee_id ON invitations (invitee_id);
+CREATE INDEX idx_invitations_room_id ON invitations (room_id);
+CREATE UNIQUE INDEX uidx_invitations_pending ON invitations (room_id, invitee_id) WHERE status = 'PENDING';
+
+-- =============================================
+-- 메시지
+-- =============================================
+CREATE TABLE messages
+(
+    id         BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    room_id    UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
+    sender_id  VARCHAR(255) NOT NULL,
+    profile_id BIGINT REFERENCES profiles (id) ON DELETE SET NULL,
+    content    TEXT         NOT NULL,
+    type       VARCHAR(20)  NOT NULL DEFAULT 'TEXT',
+    is_edited  BOOLEAN      NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    CONSTRAINT chk_messages_type CHECK (type IN ('TEXT', 'IMAGE', 'FILE'))
+);
+
+CREATE INDEX idx_messages_room_id ON messages (room_id);
+CREATE INDEX idx_messages_created_at ON messages (room_id, created_at);
+CREATE INDEX idx_messages_room_id_cursor ON messages (room_id, id DESC) WHERE deleted_at IS NULL;
+
+-- =============================================
+-- 읽음 커서 (채팅방별 마지막 읽은 메시지)
+-- =============================================
+CREATE TABLE room_read_cursors
+(
+    id                   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    room_id              UUID         NOT NULL REFERENCES chat_rooms (id) ON DELETE CASCADE,
+    user_id              VARCHAR(255) NOT NULL,
+    last_read_message_id BIGINT REFERENCES messages (id) ON DELETE SET NULL,
+    created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT uidx_read_cursors_room_user UNIQUE (room_id, user_id)
+);
+
+-- =============================================
 -- 채팅방 초대 URI
---
--- token      : URI에 포함될 고유 토큰
--- expires_at : NULL이면 만료 없음. NOT NULL이면 해당 시각 이후 사용 불가
--- is_active  : false이면 방장이 비활성화(삭제)한 URI
 -- =============================================
 CREATE TABLE room_invite_links
 (
