@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -96,7 +97,7 @@ public class DefaultRoomCreator implements RoomCreator {
         return profile;
     }
 
-    private void addToDefaultGroup(String userId, java.util.UUID roomId) {
+    private void addToDefaultGroup(String userId, UUID roomId) {
         UserGroup defaultGroup = userGroupRepository.findDefaultByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.GROUP_NOT_FOUND));
         roomGroupMembershipRepository.save(RoomGroupMembership.create(roomId, defaultGroup.getId()));
