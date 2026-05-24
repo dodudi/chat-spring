@@ -16,7 +16,6 @@ import com.chat.room.infrastructure.ChatRoomRepository;
 import com.chat.room.infrastructure.RoomGroupMembershipRepository;
 import com.chat.user.infrastructure.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,9 +32,8 @@ public class DefaultRoomCreator implements RoomCreator {
     private final ProfileRepository profileRepository;
     private final UserRepository userRepository;
     private final UserGroupRepository userGroupRepository;
-    private final PasswordEncoder passwordEncoder;
-
     private final RoomKeyCreator roomKeyCreator;
+    private final RoomPasswordEncoder roomPasswordEncoder;
 
     @Override
     public DmRoomResponse createDmRoom(String userId, CreateDmRoomRequest request) {
@@ -78,7 +76,7 @@ public class DefaultRoomCreator implements RoomCreator {
     @Override
     public PublicRoomResponse createPublicRoom(String userId, CreatePublicRoomRequest request) {
         Profile profile = validateOwnProfile(userId, request.profileId());
-        String hashedPassword = request.password() != null ? passwordEncoder.encode(request.password()) : null;
+        String hashedPassword = roomPasswordEncoder.encode(request.password());
         String roomKey = roomKeyCreator.createPublicRoomKey();
         ChatRoom room = chatRoomRepository.save(ChatRoom.createPublic(userId, request.name(), hashedPassword, roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
