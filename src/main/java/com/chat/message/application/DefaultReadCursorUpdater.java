@@ -6,6 +6,7 @@ import com.chat.message.domain.ReadCursor;
 import com.chat.message.dto.MarkReadRequest;
 import com.chat.message.infrastructure.MessageRepository;
 import com.chat.message.infrastructure.ReadCursorRepository;
+import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class DefaultReadCursorUpdater implements ReadCursorUpdater {
 
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final MessageRepository messageRepository;
     private final ReadCursorRepository readCursorRepository;
 
@@ -26,6 +28,10 @@ public class DefaultReadCursorUpdater implements ReadCursorUpdater {
     public void markRead(String userId, UUID roomId, MarkReadRequest request) {
         chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+        if (!chatRoomMemberRepository.existsActiveMember(roomId, userId)) {
+            throw new AppException(ErrorCode.ROOM_MEMBER_NOT_FOUND);
+        }
 
         messageRepository.findById(request.lastReadMessageId())
                 .filter(m -> m.getRoomId().equals(roomId))
