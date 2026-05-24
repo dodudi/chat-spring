@@ -12,12 +12,16 @@ import com.chat.room.domain.ChatRoomMember;
 import com.chat.room.domain.RoomType;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,6 +31,7 @@ public class DefaultMessageSender implements MessageSender {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final MessageRepository messageRepository;
     private final ProfileRepository profileRepository;
+    private final ChatMessagePublisher chatMessagePublisher;
 
     @Override
     public MessageResponse sendMessage(String userId, UUID roomId, SendMessageRequest request) {
@@ -49,6 +54,14 @@ public class DefaultMessageSender implements MessageSender {
                 profileRepository.findById(member.getProfileId())
                         .map(Profile::getNickname).orElse("");
 
-        return MessageResponse.of(message, nickname);
+        MessageResponse response = MessageResponse.of(message, nickname);
+        // 트랜잭션 커밋 후 발행 — 롤백 시 유령 메시지 방지
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                chatMessagePublisher.publishToRoom(roomId, response);
+            }
+        });
+        return response;
     }
 }
