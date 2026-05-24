@@ -3,9 +3,8 @@ package com.chat.room.application;
 import com.chat.common.dto.PageResponse;
 import com.chat.common.exception.AppException;
 import com.chat.common.exception.ErrorCode;
-import com.chat.message.infrastructure.LastMessageProjection;
-import com.chat.message.infrastructure.MessageRepository;
-import com.chat.message.infrastructure.UnreadCountProjection;
+import com.chat.message.application.MessageQueryService;
+import com.chat.message.dto.RoomLastMessageDto;
 import com.chat.profile.domain.Profile;
 import com.chat.profile.infrastructure.ProfileRepository;
 import com.chat.room.domain.ChatRoom;
@@ -36,7 +35,7 @@ public class DefaultRoomReader implements RoomReader {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ProfileRepository profileRepository;
-    private final MessageRepository messageRepository;
+    private final MessageQueryService messageQueryService;
 
     @Override
     public List<RoomSummaryResponse> getMyRooms(String userId, Long groupId) {
@@ -55,23 +54,20 @@ public class DefaultRoomReader implements RoomReader {
                 chatRoomMemberRepository.findDmRoomNames(dmRoomIds, userId).stream()
                         .collect(Collectors.toMap(DmRoomNameProjection::getRoomId, DmRoomNameProjection::getNickname));
 
-        Map<UUID, LastMessageProjection> lastMessages = messageRepository.findLastMessages(roomIds).stream()
-                .collect(Collectors.toMap(LastMessageProjection::getRoomId, p -> p));
-
-        Map<UUID, Long> unreadCounts = messageRepository.countUnreadByRoomIds(roomIds, userId).stream()
-                .collect(Collectors.toMap(UnreadCountProjection::getRoomId, UnreadCountProjection::getUnreadCount));
+        Map<UUID, RoomLastMessageDto> lastMessages = messageQueryService.getLastMessages(roomIds);
+        Map<UUID, Long> unreadCounts = messageQueryService.getUnreadCounts(roomIds, userId);
 
         return rooms.stream()
                 .map(room -> {
-                    LastMessageProjection last = lastMessages.get(room.getId());
+                    RoomLastMessageDto last = lastMessages.get(room.getId());
                     return new RoomSummaryResponse(
                             room.getId(),
                             room.getType().name(),
                             room.getType() == RoomType.DM
                                     ? dmNames.getOrDefault(room.getId(), "알 수 없음")
                                     : room.getName(),
-                            last != null ? last.getContent() : null,
-                            last != null ? last.getCreatedAt() : null,
+                            last != null ? last.content() : null,
+                            last != null ? last.createdAt() : null,
                             unreadCounts.getOrDefault(room.getId(), 0L).intValue(),
                             room.getUpdatedAt());
                 })
