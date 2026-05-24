@@ -4,6 +4,7 @@ import com.chat.common.exception.AppException;
 import com.chat.common.exception.ErrorCode;
 import com.chat.group.domain.UserGroup;
 import com.chat.group.infrastructure.UserGroupRepository;
+import com.chat.profile.application.ProfileValidator;
 import com.chat.profile.domain.Profile;
 import com.chat.profile.infrastructure.ProfileRepository;
 import com.chat.room.domain.ChatRoom;
@@ -29,6 +30,7 @@ public class DefaultRoomCreator implements RoomCreator {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final RoomGroupMembershipRepository roomGroupMembershipRepository;
+    private final ProfileValidator profileValidator;
     private final ProfileRepository profileRepository;
     private final UserRepository userRepository;
     private final UserGroupRepository userGroupRepository;
@@ -40,7 +42,7 @@ public class DefaultRoomCreator implements RoomCreator {
         if (!userRepository.existsById(request.targetUserId())) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
-        Profile creatorProfile = validateOwnProfile(userId, request.profileId());
+        Profile creatorProfile = profileValidator.validateOwnership(userId, request.profileId());
 
         String roomKey = roomKeyCreator.createDmRoomKey(userId, request.targetUserId());
         return chatRoomRepository.findByRoomKey(roomKey)
@@ -65,7 +67,7 @@ public class DefaultRoomCreator implements RoomCreator {
 
     @Override
     public RoomResponse createGroupRoom(String userId, CreateGroupRoomRequest request) {
-        Profile profile = validateOwnProfile(userId, request.profileId());
+        Profile profile = profileValidator.validateOwnership(userId, request.profileId());
         String roomKey = roomKeyCreator.createGroupRoomKey();
         ChatRoom room = chatRoomRepository.save(ChatRoom.createGroup(userId, request.name(), roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
@@ -75,22 +77,13 @@ public class DefaultRoomCreator implements RoomCreator {
 
     @Override
     public PublicRoomResponse createPublicRoom(String userId, CreatePublicRoomRequest request) {
-        Profile profile = validateOwnProfile(userId, request.profileId());
+        Profile profile = profileValidator.validateOwnership(userId, request.profileId());
         String hashedPassword = roomPasswordEncoder.encode(request.password());
         String roomKey = roomKeyCreator.createPublicRoomKey();
         ChatRoom room = chatRoomRepository.save(ChatRoom.createPublic(userId, request.name(), hashedPassword, roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
         addToDefaultGroup(userId, room.getId());
         return PublicRoomResponse.from(room);
-    }
-
-    private Profile validateOwnProfile(String userId, Long profileId) {
-        Profile profile = profileRepository.findById(profileId)
-                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
-        if (!profile.getUserId().equals(userId)) {
-            throw new AppException(ErrorCode.PROFILE_FORBIDDEN);
-        }
-        return profile;
     }
 
     private void addToDefaultGroup(String userId, UUID roomId) {

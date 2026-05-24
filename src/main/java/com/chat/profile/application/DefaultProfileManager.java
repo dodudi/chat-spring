@@ -17,7 +17,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class DefaultProfileManager implements ProfileManager {
+public class DefaultProfileManager implements ProfileManager, ProfileValidator {
 
     private final ProfileRepository profileRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
@@ -39,7 +39,7 @@ public class DefaultProfileManager implements ProfileManager {
     @Override
     @Transactional
     public ProfileResponse updateNickname(String userId, Long profileId, UpdateProfileRequest request) {
-        Profile profile = findOwnProfile(userId, profileId);
+        Profile profile = validateOwnership(userId, profileId);
         profile.updateNickname(request.nickname());
         // TODO: PROFILE_UPDATED 브로드캐스트 — Redis 인프라 구성 후 추가
         return ProfileResponse.from(profile);
@@ -48,14 +48,15 @@ public class DefaultProfileManager implements ProfileManager {
     @Override
     @Transactional
     public void deleteProfile(String userId, Long profileId) {
-        Profile profile = findOwnProfile(userId, profileId);
+        Profile profile = validateOwnership(userId, profileId);
         if (chatRoomMemberRepository.existsByProfileId(profileId)) {
             throw new AppException(ErrorCode.PROFILE_IN_USE);
         }
         profileRepository.delete(profile);
     }
 
-    private Profile findOwnProfile(String userId, Long profileId) {
+    @Override
+    public Profile validateOwnership(String userId, Long profileId) {
         Profile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         if (!profile.getUserId().equals(userId)) {
