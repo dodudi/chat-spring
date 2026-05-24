@@ -38,6 +38,7 @@ public class DefaultInvitationReader implements InvitationReader {
                 .collect(Collectors.toMap(ChatRoom::getId, r -> r));
 
         return invitations.stream()
+                .filter(i -> rooms.containsKey(i.getRoomId()))
                 .map(i -> InvitationResponse.of(i, rooms.get(i.getRoomId())))
                 .toList();
     }
