@@ -21,9 +21,14 @@ public class DefaultChatMessagePublisher implements ChatMessagePublisher {
 
     @Override
     public void publishToRoom(UUID roomId, MessageResponse message) {
+        publishEventToRoom(roomId, message);
+    }
+
+    @Override
+    public void publishEventToRoom(UUID roomId, Object payload) {
         try {
             redisTemplate.convertAndSend("pubsub:room:" + roomId,
-                    objectMapper.writeValueAsString(message));
+                    objectMapper.writeValueAsString(payload));
         } catch (JsonProcessingException e) {
             log.error("[REDIS_PUB_FAIL] roomId={}", roomId, e);
         } catch (Exception e) {

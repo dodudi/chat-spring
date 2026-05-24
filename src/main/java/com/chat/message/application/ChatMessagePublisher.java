@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface ChatMessagePublisher {
 
     void publishToRoom(UUID roomId, MessageResponse message);
+
+    void publishEventToRoom(UUID roomId, Object payload);
 }
