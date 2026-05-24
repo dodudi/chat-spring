@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
@@ -53,7 +55,13 @@ public class DefaultMessageSender implements MessageSender {
                         .map(Profile::getNickname).orElse("");
 
         MessageResponse response = MessageResponse.of(message, nickname);
-        chatMessagePublisher.publishToRoom(roomId, response);
+        // 트랜잭션 커밋 후 발행 — 롤백 시 유령 메시지 방지
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                chatMessagePublisher.publishToRoom(roomId, response);
+            }
+        });
         return response;
     }
 }
