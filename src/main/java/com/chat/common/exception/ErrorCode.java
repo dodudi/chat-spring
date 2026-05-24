@@ -33,6 +33,7 @@ public enum ErrorCode {
     ROOM_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND,       "R008", "대상 멤버 없음"),
     ROOM_EMPTY(HttpStatus.NOT_FOUND,                  "R009", "빈 방 — 참여 불가"),
     ROOM_TYPE_UNSUPPORTED(HttpStatus.FORBIDDEN,       "R010", "지원하지 않는 채팅방 타입"),
+    ROOM_SELF_KICK(HttpStatus.BAD_REQUEST,            "R011", "자기 자신을 강퇴할 수 없습니다"),
 
     // Invitation
     INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND,        "I001", "초대 없음"),
