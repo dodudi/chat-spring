@@ -3,10 +3,13 @@ package com.chat.message.application;
 import com.chat.common.exception.AppException;
 import com.chat.common.exception.ErrorCode;
 import com.chat.message.domain.Message;
+import com.chat.message.dto.MessageDeletedEvent;
 import com.chat.message.infrastructure.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
@@ -16,6 +19,7 @@ import java.util.UUID;
 public class DefaultMessageDeleter implements MessageDeleter {
 
     private final MessageRepository messageRepository;
+    private final ChatMessagePublisher chatMessagePublisher;
 
     @Override
     public void deleteMessage(String userId, UUID roomId, Long messageId) {
@@ -28,5 +32,13 @@ public class DefaultMessageDeleter implements MessageDeleter {
         }
 
         message.delete();
+
+        MessageDeletedEvent event = MessageDeletedEvent.of(roomId, messageId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                chatMessagePublisher.publishEventToRoom(roomId, event);
+            }
+        });
     }
 }
