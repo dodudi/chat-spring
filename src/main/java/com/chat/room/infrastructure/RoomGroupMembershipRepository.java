@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,4 +31,8 @@ public interface RoomGroupMembershipRepository extends JpaRepository<RoomGroupMe
             )
             """)
     void deleteByRoomIdAndUserId(@Param("roomId") UUID roomId, @Param("userId") String userId);
+
+    @Modifying
+    @Query("DELETE FROM RoomGroupMembership m WHERE m.roomId IN :roomIds")
+    void deleteByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds);
 }

@@ -3,6 +3,7 @@ package com.chat.message.infrastructure;
 import com.chat.message.domain.Message;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -50,4 +51,14 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<UnreadCountProjection> countUnreadByRoomIds(
             @Param("roomIds") Collection<UUID> roomIds,
             @Param("userId") String userId);
+
+    // @SQLRestriction 우회 — deleted_at 여부와 관계없이 오래된 메시지 전체 삭제
+    @Modifying
+    @Query(value = "DELETE FROM messages WHERE created_at < :cutoff", nativeQuery = true)
+    int deleteOlderThan(@Param("cutoff") OffsetDateTime cutoff);
+
+    // @SQLRestriction 우회 — soft-delete 여부와 관계없이 지정 방의 메시지 전체 삭제
+    @Modifying
+    @Query(value = "DELETE FROM messages WHERE room_id IN :roomIds", nativeQuery = true)
+    void deleteByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds);
 }
