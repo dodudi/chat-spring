@@ -74,6 +74,8 @@ public class DefaultRoomJoiner implements RoomJoiner {
     private void addToDefaultGroup(String userId, UUID roomId) {
         UserGroup defaultGroup = userGroupRepository.findDefaultByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.GROUP_NOT_FOUND));
-        roomGroupMembershipRepository.save(RoomGroupMembership.create(roomId, defaultGroup.getId()));
+        if (roomGroupMembershipRepository.findByRoomIdAndGroupId(roomId, defaultGroup.getId()).isEmpty()) {
+            roomGroupMembershipRepository.save(RoomGroupMembership.create(roomId, defaultGroup.getId()));
+        }
     }
 }
