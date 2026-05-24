@@ -5,6 +5,7 @@ import com.chat.common.dto.PageResponse;
 import com.chat.room.application.RoomCreator;
 import com.chat.room.application.RoomJoiner;
 import com.chat.room.application.RoomKicker;
+import com.chat.room.application.RoomLeaver;
 import com.chat.room.application.RoomReader;
 import com.chat.room.application.RoomUpdater;
 import com.chat.room.dto.CreateDmRoomRequest;
@@ -49,6 +50,7 @@ public class RoomController {
     private final RoomJoiner roomJoiner;
     private final RoomUpdater roomUpdater;
     private final RoomKicker roomKicker;
+    private final RoomLeaver roomLeaver;
 
     @PostMapping("/dm")
     public ResponseEntity<ApiResponse<DmRoomResponse>> createDmRoom(
@@ -122,6 +124,14 @@ public class RoomController {
             @PathVariable UUID roomId,
             @Valid @RequestBody JoinPublicRoomRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(roomJoiner.joinPublicRoom(jwt.getSubject(), roomId, request)));
+    }
+
+    @DeleteMapping("/{roomId}/members/me")
+    public ResponseEntity<Void> leaveRoom(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID roomId) {
+        roomLeaver.leaveRoom(jwt.getSubject(), roomId);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{roomId}/members/{targetUserId}")

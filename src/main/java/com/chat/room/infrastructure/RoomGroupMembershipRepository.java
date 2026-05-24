@@ -21,4 +21,13 @@ public interface RoomGroupMembershipRepository extends JpaRepository<RoomGroupMe
     @Modifying
     @Query("DELETE FROM RoomGroupMembership m WHERE m.groupId = :groupId")
     void deleteByGroupId(@Param("groupId") Long groupId);
+
+    @Modifying
+    @Query("""
+            DELETE FROM RoomGroupMembership m
+            WHERE m.roomId = :roomId AND m.groupId IN (
+                SELECT g.id FROM UserGroup g WHERE g.userId = :userId
+            )
+            """)
+    void deleteByRoomIdAndUserId(@Param("roomId") UUID roomId, @Param("userId") String userId);
 }
