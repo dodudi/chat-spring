@@ -2,17 +2,21 @@ package com.chat.profile.application;
 
 import com.chat.common.exception.AppException;
 import com.chat.common.exception.ErrorCode;
-import com.chat.profile.domain.Profile;
 import com.chat.profile.dto.CreateProfileRequest;
 import com.chat.profile.dto.ProfileResponse;
+import com.chat.profile.dto.ProfileUpdatedEvent;
 import com.chat.profile.dto.UpdateProfileRequest;
+import com.chat.profile.domain.Profile;
 import com.chat.profile.infrastructure.ProfileRepository;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ public class DefaultProfileManager implements ProfileManager, ProfileValidator {
 
     private final ProfileRepository profileRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
+    private final ProfileEventPublisher profileEventPublisher;
 
     @Override
     public List<ProfileResponse> getMyProfiles(String userId) {
@@ -41,7 +46,16 @@ public class DefaultProfileManager implements ProfileManager, ProfileValidator {
     public ProfileResponse updateNickname(String userId, Long profileId, UpdateProfileRequest request) {
         Profile profile = validateOwnership(userId, profileId);
         profile.updateNickname(request.nickname());
-        // TODO: PROFILE_UPDATED 브로드캐스트 — Redis 인프라 구성 후 추가
+        List<UUID> roomIds = chatRoomMemberRepository.findActiveRoomIdsByProfileId(profileId);
+        if (!roomIds.isEmpty()) {
+            ProfileUpdatedEvent event = ProfileUpdatedEvent.of(profileId, request.nickname());
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    profileEventPublisher.publish(roomIds, event);
+                }
+            });
+        }
         return ProfileResponse.from(profile);
     }
 
