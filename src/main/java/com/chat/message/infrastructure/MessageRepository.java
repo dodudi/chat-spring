@@ -56,4 +56,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Modifying
     @Query(value = "DELETE FROM messages WHERE created_at < :cutoff", nativeQuery = true)
     int deleteOlderThan(@Param("cutoff") OffsetDateTime cutoff);
+
+    // @SQLRestriction 우회 — soft-delete 여부와 관계없이 지정 방의 메시지 전체 삭제
+    @Modifying
+    @Query(value = "DELETE FROM messages WHERE room_id IN :roomIds", nativeQuery = true)
+    void deleteByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds);
 }

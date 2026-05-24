@@ -47,6 +47,10 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     @Query("UPDATE ChatRoomMember m SET m.isHidden = false WHERE m.roomId = :roomId AND m.isHidden = true")
     void unhideAll(@Param("roomId") UUID roomId);
 
+    @Modifying
+    @Query("DELETE FROM ChatRoomMember m WHERE m.roomId IN :roomIds")
+    void deleteByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds);
+
     @Query("""
             SELECT m.roomId AS roomId, p.nickname AS nickname
             FROM ChatRoomMember m
