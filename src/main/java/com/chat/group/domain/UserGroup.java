@@ -48,4 +48,16 @@ public class UserGroup {
         group.isDefault = true;
         return group;
     }
+
+    public static UserGroup create(String userId, String name) {
+        UserGroup group = new UserGroup();
+        group.userId = userId;
+        group.name = name;
+        group.isDefault = false;
+        return group;
+    }
+
+    public void rename(String name) {
+        this.name = name;
+    }
 }
