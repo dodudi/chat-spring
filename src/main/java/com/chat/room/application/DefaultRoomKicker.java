@@ -32,7 +32,7 @@ public class DefaultRoomKicker implements RoomKicker {
             throw new AppException(ErrorCode.ROOM_FORBIDDEN);
         }
         if (requesterId.equals(targetUserId)) {
-            throw new AppException(ErrorCode.FORBIDDEN);
+            throw new AppException(ErrorCode.ROOM_SELF_KICK);
         }
         ChatRoomMember target = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, targetUserId)
                 .filter(m -> m.getKickedAt() == null && m.getLeftAt() == null)
