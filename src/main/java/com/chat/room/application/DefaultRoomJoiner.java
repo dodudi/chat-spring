@@ -50,7 +50,9 @@ public class DefaultRoomJoiner implements RoomJoiner {
 
         chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId).ifPresent(m -> {
             if (m.getKickedAt() != null) throw new AppException(ErrorCode.ROOM_KICKED);
-            throw new AppException(ErrorCode.ROOM_ALREADY_JOINED);
+            if (m.getLeftAt() == null)   throw new AppException(ErrorCode.ROOM_ALREADY_JOINED);
+            // leftAt != null: 이전 퇴장 레코드 삭제 후 재입장 허용 (UNIQUE 제약 방지)
+            chatRoomMemberRepository.delete(m);
         });
 
         if (activeCount >= roomCapacityPolicy.maxCapacity(RoomType.PUBLIC)) {
