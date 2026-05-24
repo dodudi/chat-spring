@@ -52,7 +52,8 @@ public enum ErrorCode {
     GROUP_NOT_FOUND(HttpStatus.NOT_FOUND,             "G001", "그룹 없음"),
     GROUP_NAME_DUPLICATE(HttpStatus.CONFLICT,         "G002", "그룹 이름 중복"),
     GROUP_LIMIT_EXCEEDED(HttpStatus.CONFLICT,         "G003", "최대 그룹 수 초과"),
-    GROUP_DEFAULT_IMMUTABLE(HttpStatus.FORBIDDEN,     "G004", "기본 그룹 변경 불가");
+    GROUP_DEFAULT_IMMUTABLE(HttpStatus.FORBIDDEN,     "G004", "기본 그룹 변경 불가"),
+    GROUP_ROOM_ALREADY_ASSIGNED(HttpStatus.CONFLICT,  "G005", "이미 그룹에 할당된 채팅방");
 
     private final HttpStatus status;
     private final String code;

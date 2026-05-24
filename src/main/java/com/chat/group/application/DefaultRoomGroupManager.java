@@ -29,7 +29,7 @@ public class DefaultRoomGroupManager implements RoomGroupManager {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
         if (roomGroupMembershipRepository.findByRoomIdAndGroupId(roomId, group.getId()).isPresent()) {
-            throw new AppException(ErrorCode.ROOM_ALREADY_JOINED);
+            throw new AppException(ErrorCode.GROUP_ROOM_ALREADY_ASSIGNED);
         }
         roomGroupMembershipRepository.save(RoomGroupMembership.create(roomId, group.getId()));
     }
