@@ -14,4 +14,10 @@ public class DefaultRoomPasswordEncoder implements RoomPasswordEncoder {
     public String encode(String rawPassword) {
         return rawPassword != null ? passwordEncoder.encode(rawPassword) : null;
     }
+
+    @Override
+    public boolean matches(String rawPassword, String encodedPassword) {
+        if (rawPassword == null || encodedPassword == null) return false;
+        return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
 }

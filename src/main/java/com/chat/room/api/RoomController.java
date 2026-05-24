@@ -3,11 +3,13 @@ package com.chat.room.api;
 import com.chat.common.ApiResponse;
 import com.chat.common.dto.PageResponse;
 import com.chat.room.application.RoomCreator;
+import com.chat.room.application.RoomJoiner;
 import com.chat.room.application.RoomReader;
 import com.chat.room.dto.CreateDmRoomRequest;
 import com.chat.room.dto.CreateGroupRoomRequest;
 import com.chat.room.dto.CreatePublicRoomRequest;
 import com.chat.room.dto.DmRoomResponse;
+import com.chat.room.dto.JoinPublicRoomRequest;
 import com.chat.room.dto.PublicRoomResponse;
 import com.chat.room.dto.PublicRoomSummaryResponse;
 import com.chat.room.dto.RoomDetailResponse;
@@ -37,6 +39,7 @@ public class RoomController {
 
     private final RoomCreator roomCreator;
     private final RoomReader roomReader;
+    private final RoomJoiner roomJoiner;
 
     @PostMapping("/dm")
     public ResponseEntity<ApiResponse<DmRoomResponse>> createDmRoom(
@@ -78,6 +81,14 @@ public class RoomController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.ok(roomReader.searchPublicRooms(name, page, size)));
+    }
+
+    @PostMapping("/{roomId}/join")
+    public ResponseEntity<ApiResponse<RoomResponse>> joinPublicRoom(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID roomId,
+            @Valid @RequestBody JoinPublicRoomRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(roomJoiner.joinPublicRoom(jwt.getSubject(), roomId, request)));
     }
 
     @GetMapping("/{roomId}")
