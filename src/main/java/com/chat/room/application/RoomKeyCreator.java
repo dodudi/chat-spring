@@ -4,8 +4,8 @@ public interface RoomKeyCreator {
 
     String createDmRoomKey(String userId1, String userId2);
 
-    String createGroupRoomKey(String userId);
+    String createGroupRoomKey();
 
-    String createPublicRoomKey(String userId);
+    String createPublicRoomKey();
 
 }

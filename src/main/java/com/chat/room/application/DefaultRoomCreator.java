@@ -68,7 +68,7 @@ public class DefaultRoomCreator implements RoomCreator {
     @Override
     public RoomResponse createGroupRoom(String userId, CreateGroupRoomRequest request) {
         Profile profile = validateOwnProfile(userId, request.profileId());
-        String roomKey = roomKeyCreator.createGroupRoomKey(userId);
+        String roomKey = roomKeyCreator.createGroupRoomKey();
         ChatRoom room = chatRoomRepository.save(ChatRoom.createGroup(userId, request.name(), roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
         addToDefaultGroup(userId, room.getId());
@@ -79,7 +79,7 @@ public class DefaultRoomCreator implements RoomCreator {
     public PublicRoomResponse createPublicRoom(String userId, CreatePublicRoomRequest request) {
         Profile profile = validateOwnProfile(userId, request.profileId());
         String hashedPassword = request.password() != null ? passwordEncoder.encode(request.password()) : null;
-        String roomKey = roomKeyCreator.createPublicRoomKey(userId);
+        String roomKey = roomKeyCreator.createPublicRoomKey();
         ChatRoom room = chatRoomRepository.save(ChatRoom.createPublic(userId, request.name(), hashedPassword, roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
         addToDefaultGroup(userId, room.getId());
