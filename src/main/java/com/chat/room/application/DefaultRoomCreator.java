@@ -10,12 +10,7 @@ import com.chat.room.domain.ChatRoom;
 import com.chat.room.domain.ChatRoomMember;
 import com.chat.room.domain.MemberRole;
 import com.chat.room.domain.RoomGroupMembership;
-import com.chat.room.dto.CreateDmRoomRequest;
-import com.chat.room.dto.CreateGroupRoomRequest;
-import com.chat.room.dto.CreatePublicRoomRequest;
-import com.chat.room.dto.DmRoomResponse;
-import com.chat.room.dto.PublicRoomResponse;
-import com.chat.room.dto.RoomResponse;
+import com.chat.room.dto.*;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
 import com.chat.room.infrastructure.RoomGroupMembershipRepository;
@@ -25,7 +20,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.UUID;
 
 @Service
@@ -41,6 +35,8 @@ public class DefaultRoomCreator implements RoomCreator {
     private final UserGroupRepository userGroupRepository;
     private final PasswordEncoder passwordEncoder;
 
+    private final RoomKeyCreator roomKeyCreator;
+
     @Override
     public DmRoomResponse createDmRoom(String userId, CreateDmRoomRequest request) {
         if (!userRepository.existsById(request.targetUserId())) {
@@ -48,7 +44,7 @@ public class DefaultRoomCreator implements RoomCreator {
         }
         Profile creatorProfile = validateOwnProfile(userId, request.profileId());
 
-        String roomKey = buildDmRoomKey(userId, request.targetUserId());
+        String roomKey = roomKeyCreator.createDmRoomKey(userId, request.targetUserId());
         return chatRoomRepository.findByRoomKey(roomKey)
                 .map(existing -> {
                     chatRoomMemberRepository.findByRoomIdAndUserId(existing.getId(), userId)
@@ -72,7 +68,8 @@ public class DefaultRoomCreator implements RoomCreator {
     @Override
     public RoomResponse createGroupRoom(String userId, CreateGroupRoomRequest request) {
         Profile profile = validateOwnProfile(userId, request.profileId());
-        ChatRoom room = chatRoomRepository.save(ChatRoom.createGroup(userId, request.name()));
+        String roomKey = roomKeyCreator.createGroupRoomKey();
+        ChatRoom room = chatRoomRepository.save(ChatRoom.createGroup(userId, request.name(), roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
         addToDefaultGroup(userId, room.getId());
         return RoomResponse.from(room);
@@ -82,7 +79,8 @@ public class DefaultRoomCreator implements RoomCreator {
     public PublicRoomResponse createPublicRoom(String userId, CreatePublicRoomRequest request) {
         Profile profile = validateOwnProfile(userId, request.profileId());
         String hashedPassword = request.password() != null ? passwordEncoder.encode(request.password()) : null;
-        ChatRoom room = chatRoomRepository.save(ChatRoom.createPublic(userId, request.name(), hashedPassword));
+        String roomKey = roomKeyCreator.createPublicRoomKey();
+        ChatRoom room = chatRoomRepository.save(ChatRoom.createPublic(userId, request.name(), hashedPassword, roomKey));
         chatRoomMemberRepository.save(ChatRoomMember.create(room.getId(), userId, profile.getId(), MemberRole.OWNER));
         addToDefaultGroup(userId, room.getId());
         return PublicRoomResponse.from(room);
@@ -101,11 +99,5 @@ public class DefaultRoomCreator implements RoomCreator {
         UserGroup defaultGroup = userGroupRepository.findDefaultByUserId(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.GROUP_NOT_FOUND));
         roomGroupMembershipRepository.save(RoomGroupMembership.create(roomId, defaultGroup.getId()));
-    }
-
-    private String buildDmRoomKey(String userId1, String userId2) {
-        String[] users = {userId1, userId2};
-        Arrays.sort(users);
-        return "DM:" + users[0] + ":" + users[1];
     }
 }

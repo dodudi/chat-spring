@@ -59,19 +59,19 @@ public class ChatRoom {
         return room;
     }
 
-    public static ChatRoom createGroup(String createdBy, String name) {
+    public static ChatRoom createGroup(String createdBy, String name, String roomKey) {
         ChatRoom room = new ChatRoom();
         room.type = RoomType.GROUP;
-        room.roomKey = UUID.randomUUID().toString();
+        room.roomKey = roomKey;
         room.name = name;
         room.createdBy = createdBy;
         return room;
     }
 
-    public static ChatRoom createPublic(String createdBy, String name, String hashedPassword) {
+    public static ChatRoom createPublic(String createdBy, String name, String hashedPassword, String roomKey) {
         ChatRoom room = new ChatRoom();
         room.type = RoomType.PUBLIC;
-        room.roomKey = UUID.randomUUID().toString();
+        room.roomKey = roomKey;
         room.name = name;
         room.password = hashedPassword;
         room.createdBy = createdBy;
