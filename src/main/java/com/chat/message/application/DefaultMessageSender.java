@@ -12,12 +12,14 @@ import com.chat.room.domain.ChatRoomMember;
 import com.chat.room.domain.RoomType;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,6 +29,7 @@ public class DefaultMessageSender implements MessageSender {
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final MessageRepository messageRepository;
     private final ProfileRepository profileRepository;
+    private final ChatMessagePublisher chatMessagePublisher;
 
     @Override
     public MessageResponse sendMessage(String userId, UUID roomId, SendMessageRequest request) {
@@ -49,6 +52,8 @@ public class DefaultMessageSender implements MessageSender {
                 profileRepository.findById(member.getProfileId())
                         .map(Profile::getNickname).orElse("");
 
-        return MessageResponse.of(message, nickname);
+        MessageResponse response = MessageResponse.of(message, nickname);
+        chatMessagePublisher.publishToRoom(roomId, response);
+        return response;
     }
 }
