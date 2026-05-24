@@ -79,6 +79,7 @@ public class ChatRoomMember {
     }
 
     public void leave() {
+        this.role = MemberRole.MEMBER;
         this.leftAt = OffsetDateTime.now();
     }
 

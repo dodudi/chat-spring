@@ -46,26 +46,27 @@ public class DefaultRoomLeaver implements RoomLeaver {
     }
 
     private void leaveGroup(String userId, UUID roomId) {
-        ChatRoomMember member = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
-                .filter(m -> m.getLeftAt() == null && m.getKickedAt() == null)
-                .orElseThrow(() -> new AppException(ErrorCode.ROOM_MEMBER_NOT_FOUND));
-
-        if (member.getRole() == MemberRole.OWNER) {
-            delegateOwner(roomId, userId);
-        }
+        ChatRoomMember member = resolveActiveMember(userId, roomId);
+        prepareLeave(member, roomId, userId);
         member.leave();
-        roomGroupMembershipRepository.deleteByRoomIdAndUserId(roomId, userId);
     }
 
     private void leavePublic(String userId, UUID roomId) {
-        ChatRoomMember member = chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
+        ChatRoomMember member = resolveActiveMember(userId, roomId);
+        prepareLeave(member, roomId, userId);
+        chatRoomMemberRepository.delete(member);
+    }
+
+    private ChatRoomMember resolveActiveMember(String userId, UUID roomId) {
+        return chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)
                 .filter(m -> m.getLeftAt() == null && m.getKickedAt() == null)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_MEMBER_NOT_FOUND));
+    }
 
+    private void prepareLeave(ChatRoomMember member, UUID roomId, String userId) {
         if (member.getRole() == MemberRole.OWNER) {
             delegateOwner(roomId, userId);
         }
-        chatRoomMemberRepository.delete(member);
         roomGroupMembershipRepository.deleteByRoomIdAndUserId(roomId, userId);
     }
 
