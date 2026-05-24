@@ -1,6 +1,7 @@
 package com.chat.room.infrastructure;
 
 import com.chat.room.domain.ChatRoomMember;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,6 +33,14 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
 
     @Query("SELECT m FROM ChatRoomMember m WHERE m.roomId = :roomId AND m.userId <> :userId")
     Optional<ChatRoomMember> findOtherMember(@Param("roomId") UUID roomId, @Param("userId") String userId);
+
+    @Query("""
+            SELECT m FROM ChatRoomMember m
+            WHERE m.roomId = :roomId AND m.userId <> :userId
+              AND m.leftAt IS NULL AND m.kickedAt IS NULL
+            ORDER BY m.createdAt ASC
+            """)
+    List<ChatRoomMember> findActiveMembersExcluding(@Param("roomId") UUID roomId, @Param("userId") String userId, Pageable pageable);
 
     @Query("""
             SELECT m.roomId AS roomId, p.nickname AS nickname

@@ -73,6 +73,20 @@ public class ChatRoomMember {
         this.profileId = profileId;
     }
 
+    public void hide() {
+        this.isHidden = true;
+        this.hiddenAt = OffsetDateTime.now();
+    }
+
+    public void leave() {
+        this.role = MemberRole.MEMBER;
+        this.leftAt = OffsetDateTime.now();
+    }
+
+    public void promoteToOwner() {
+        this.role = MemberRole.OWNER;
+    }
+
     public void kick() {
         this.kickedAt = OffsetDateTime.now();
     }
