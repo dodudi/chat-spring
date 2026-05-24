@@ -21,12 +21,12 @@ public class DefaultRoomKeyCreator implements RoomKeyCreator {
 
     @Override
     public String createGroupRoomKey(String userId) {
-        return "group:" + userId;
+        return "group:" + userId + ":" + UUID.randomUUID();
     }
 
     @Override
     public String createPublicRoomKey(String userId) {
-        return "public:" + userId;
+        return "public:" + userId + ":" + UUID.randomUUID();
     }
 
     private String sha256(String input) {
