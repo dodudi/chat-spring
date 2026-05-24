@@ -3,6 +3,9 @@ package com.chat.room.application;
 import com.chat.common.dto.PageResponse;
 import com.chat.common.exception.AppException;
 import com.chat.common.exception.ErrorCode;
+import com.chat.message.infrastructure.LastMessageProjection;
+import com.chat.message.infrastructure.MessageRepository;
+import com.chat.message.infrastructure.UnreadCountProjection;
 import com.chat.profile.domain.Profile;
 import com.chat.profile.infrastructure.ProfileRepository;
 import com.chat.room.domain.ChatRoom;
@@ -33,26 +36,45 @@ public class DefaultRoomReader implements RoomReader {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMemberRepository chatRoomMemberRepository;
     private final ProfileRepository profileRepository;
+    private final MessageRepository messageRepository;
 
     @Override
     public List<RoomSummaryResponse> getMyRooms(String userId, Long groupId) {
         List<ChatRoom> rooms = chatRoomRepository.findMyRooms(userId, groupId);
+        if (rooms.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> roomIds = rooms.stream().map(ChatRoom::getId).toList();
         List<UUID> dmRoomIds = rooms.stream()
                 .filter(r -> r.getType() == RoomType.DM)
                 .map(ChatRoom::getId)
                 .toList();
+
         Map<UUID, String> dmNames = dmRoomIds.isEmpty() ? Map.of() :
                 chatRoomMemberRepository.findDmRoomNames(dmRoomIds, userId).stream()
                         .collect(Collectors.toMap(DmRoomNameProjection::getRoomId, DmRoomNameProjection::getNickname));
+
+        Map<UUID, LastMessageProjection> lastMessages = messageRepository.findLastMessages(roomIds).stream()
+                .collect(Collectors.toMap(LastMessageProjection::getRoomId, p -> p));
+
+        Map<UUID, Long> unreadCounts = messageRepository.countUnreadByRoomIds(roomIds, userId).stream()
+                .collect(Collectors.toMap(UnreadCountProjection::getRoomId, UnreadCountProjection::getUnreadCount));
+
         return rooms.stream()
-                .map(room -> new RoomSummaryResponse(
-                        room.getId(),
-                        room.getType().name(),
-                        room.getType() == RoomType.DM
-                                ? dmNames.getOrDefault(room.getId(), "알 수 없음")
-                                : room.getName(),
-                        null, null, 0,
-                        room.getUpdatedAt()))
+                .map(room -> {
+                    LastMessageProjection last = lastMessages.get(room.getId());
+                    return new RoomSummaryResponse(
+                            room.getId(),
+                            room.getType().name(),
+                            room.getType() == RoomType.DM
+                                    ? dmNames.getOrDefault(room.getId(), "알 수 없음")
+                                    : room.getName(),
+                            last != null ? last.getContent() : null,
+                            last != null ? last.getCreatedAt() : null,
+                            unreadCounts.getOrDefault(room.getId(), 0L).intValue(),
+                            room.getUpdatedAt());
+                })
                 .toList();
     }
 
