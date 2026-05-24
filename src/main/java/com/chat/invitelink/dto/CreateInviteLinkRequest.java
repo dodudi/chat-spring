@@ -1,7 +1,9 @@
 package com.chat.invitelink.dto;
 
+import jakarta.validation.constraints.FutureOrPresent;
+
 import java.time.OffsetDateTime;
 
 public record CreateInviteLinkRequest(
-        OffsetDateTime expiresAt
+        @FutureOrPresent OffsetDateTime expiresAt
 ) {}

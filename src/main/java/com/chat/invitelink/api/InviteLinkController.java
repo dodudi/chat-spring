@@ -33,7 +33,7 @@ public class InviteLinkController {
     public ResponseEntity<ApiResponse<InviteLinkResponse>> createLink(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID roomId,
-            @RequestBody CreateInviteLinkRequest request) {
+            @Valid @RequestBody CreateInviteLinkRequest request) {
         InviteLinkResponse response = inviteLinkManager.createLink(jwt.getSubject(), roomId, request);
         URI location = URI.create("/api/v1/invite-links/" + response.id());
         return ResponseEntity.created(location).body(ApiResponse.ok(response));
