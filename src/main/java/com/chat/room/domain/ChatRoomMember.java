@@ -72,4 +72,8 @@ public class ChatRoomMember {
     public void updateProfileId(Long profileId) {
         this.profileId = profileId;
     }
+
+    public void kick() {
+        this.kickedAt = OffsetDateTime.now();
+    }
 }
