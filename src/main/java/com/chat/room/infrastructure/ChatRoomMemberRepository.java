@@ -24,6 +24,9 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     @Query("SELECT COUNT(m) FROM ChatRoomMember m WHERE m.roomId = :roomId")
     long countByRoomId(@Param("roomId") UUID roomId);
 
+    @Query("SELECT COUNT(m) FROM ChatRoomMember m WHERE m.roomId = :roomId AND m.leftAt IS NULL AND m.kickedAt IS NULL")
+    long countActiveByRoomId(@Param("roomId") UUID roomId);
+
     @Query("SELECT m FROM ChatRoomMember m WHERE m.roomId = :roomId AND m.userId <> :userId")
     Optional<ChatRoomMember> findOtherMember(@Param("roomId") UUID roomId, @Param("userId") String userId);
 
