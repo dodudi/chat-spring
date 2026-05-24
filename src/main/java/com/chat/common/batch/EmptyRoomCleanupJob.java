@@ -43,7 +43,7 @@ public class EmptyRoomCleanupJob {
         invitationRepository.deleteByRoomIdIn(roomIds);
         roomGroupMembershipRepository.deleteByRoomIdIn(roomIds);
         chatRoomMemberRepository.deleteByRoomIdIn(roomIds);
-        chatRoomRepository.deleteAllById(roomIds);
+        chatRoomRepository.deleteByIdIn(roomIds);
 
         log.info("[BATCH_ROOM_CLEANUP] deleted={}", roomIds.size());
     }
