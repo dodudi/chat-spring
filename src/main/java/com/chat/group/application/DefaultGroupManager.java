@@ -7,6 +7,7 @@ import com.chat.group.dto.CreateGroupRequest;
 import com.chat.group.dto.GroupResponse;
 import com.chat.group.dto.UpdateGroupRequest;
 import com.chat.group.infrastructure.UserGroupRepository;
+import com.chat.room.infrastructure.RoomGroupMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultGroupManager implements GroupManager {
 
     private final UserGroupRepository userGroupRepository;
+    private final RoomGroupMembershipRepository roomGroupMembershipRepository;
     private final GroupPolicy groupPolicy;
 
     @Override
@@ -50,6 +52,7 @@ public class DefaultGroupManager implements GroupManager {
         if (group.isDefault()) {
             throw new AppException(ErrorCode.GROUP_DEFAULT_IMMUTABLE);
         }
+        roomGroupMembershipRepository.deleteByGroupId(group.getId());
         userGroupRepository.delete(group);
     }
 
