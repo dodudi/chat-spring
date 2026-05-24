@@ -43,7 +43,7 @@ public class DefaultMessageEditor implements MessageEditor {
                         .map(Profile::getNickname).orElse("");
 
         MessageResponse response = MessageResponse.of(message, nickname);
-        MessageEditedEvent event = MessageEditedEvent.of(roomId, messageId, request.content());
+        MessageEditedEvent event = MessageEditedEvent.of(roomId, messageId, response.content());
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {

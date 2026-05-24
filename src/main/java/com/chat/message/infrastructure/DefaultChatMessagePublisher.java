@@ -1,5 +1,6 @@
 package com.chat.message.infrastructure;
 
+import com.chat.common.RoomEvent;
 import com.chat.message.application.ChatMessagePublisher;
 import com.chat.message.dto.MessageResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,11 +22,15 @@ public class DefaultChatMessagePublisher implements ChatMessagePublisher {
 
     @Override
     public void publishToRoom(UUID roomId, MessageResponse message) {
-        publishEventToRoom(roomId, message);
+        publish(roomId, message);
     }
 
     @Override
-    public void publishEventToRoom(UUID roomId, Object payload) {
+    public void publishEventToRoom(UUID roomId, RoomEvent payload) {
+        publish(roomId, payload);
+    }
+
+    private void publish(UUID roomId, Object payload) {
         try {
             redisTemplate.convertAndSend("pubsub:room:" + roomId,
                     objectMapper.writeValueAsString(payload));
