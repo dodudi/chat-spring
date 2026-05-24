@@ -68,6 +68,14 @@ public class ChatRoom {
         return room;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updatePassword(String hashedPassword) {
+        this.password = hashedPassword;
+    }
+
     public static ChatRoom createPublic(String createdBy, String name, String hashedPassword, String roomKey) {
         ChatRoom room = new ChatRoom();
         room.type = RoomType.PUBLIC;
