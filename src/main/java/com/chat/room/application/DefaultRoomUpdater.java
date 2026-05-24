@@ -45,13 +45,12 @@ public class DefaultRoomUpdater implements RoomUpdater {
     }
 
     @Override
-    public RoomResponse clearPassword(String userId, UUID roomId) {
+    public void clearPassword(String userId, UUID roomId) {
         ChatRoom room = findAndValidateOwner(userId, roomId);
         if (room.getType() != RoomType.PUBLIC) {
             throw new AppException(ErrorCode.ROOM_TYPE_UNSUPPORTED);
         }
         room.updatePassword(null);
-        return RoomResponse.from(room);
     }
 
     private ChatRoom findAndValidateOwner(String userId, UUID roomId) {

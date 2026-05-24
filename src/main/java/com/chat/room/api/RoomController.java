@@ -107,10 +107,11 @@ public class RoomController {
     }
 
     @DeleteMapping("/{roomId}/password")
-    public ResponseEntity<ApiResponse<RoomResponse>> clearPassword(
+    public ResponseEntity<Void> clearPassword(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID roomId) {
-        return ResponseEntity.ok(ApiResponse.ok(roomUpdater.clearPassword(jwt.getSubject(), roomId)));
+        roomUpdater.clearPassword(jwt.getSubject(), roomId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{roomId}/join")

@@ -15,5 +15,5 @@ public interface RoomUpdater {
     RoomResponse updatePassword(String userId, UUID roomId, UpdateRoomPasswordRequest request);
 
     /** PUBLIC 전용. 예외: R001(없음), R010(GROUP·DM 불가), R007(방장 아님) */
-    RoomResponse clearPassword(String userId, UUID roomId);
+    void clearPassword(String userId, UUID roomId);
 }
