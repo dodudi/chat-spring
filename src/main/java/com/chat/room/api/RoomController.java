@@ -6,6 +6,7 @@ import com.chat.room.application.RoomCreator;
 import com.chat.room.application.RoomJoiner;
 import com.chat.room.application.RoomKicker;
 import com.chat.room.application.RoomLeaver;
+import com.chat.room.application.RoomMemberUpdater;
 import com.chat.room.application.RoomReader;
 import com.chat.room.application.RoomUpdater;
 import com.chat.room.dto.CreateDmRoomRequest;
@@ -18,6 +19,7 @@ import com.chat.room.dto.PublicRoomSummaryResponse;
 import com.chat.room.dto.RoomDetailResponse;
 import com.chat.room.dto.RoomResponse;
 import com.chat.room.dto.RoomSummaryResponse;
+import com.chat.room.dto.UpdateMemberProfileRequest;
 import com.chat.room.dto.UpdateRoomNameRequest;
 import com.chat.room.dto.UpdateRoomPasswordRequest;
 import jakarta.validation.Valid;
@@ -51,6 +53,7 @@ public class RoomController {
     private final RoomUpdater roomUpdater;
     private final RoomKicker roomKicker;
     private final RoomLeaver roomLeaver;
+    private final RoomMemberUpdater roomMemberUpdater;
 
     @PostMapping("/dm")
     public ResponseEntity<ApiResponse<DmRoomResponse>> createDmRoom(
@@ -140,6 +143,15 @@ public class RoomController {
             @PathVariable UUID roomId,
             @PathVariable String targetUserId) {
         roomKicker.kickMember(jwt.getSubject(), roomId, targetUserId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{roomId}/members/me/profile")
+    public ResponseEntity<Void> updateMemberProfile(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID roomId,
+            @Valid @RequestBody UpdateMemberProfileRequest request) {
+        roomMemberUpdater.updateProfile(jwt.getSubject(), roomId, request.profileId());
         return ResponseEntity.noContent().build();
     }
 

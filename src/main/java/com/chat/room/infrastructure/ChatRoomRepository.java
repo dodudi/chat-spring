@@ -4,6 +4,7 @@ import com.chat.room.domain.ChatRoom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -38,4 +39,14 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, UUID> {
             ORDER BY r.name ASC
             """)
     Page<ChatRoom> searchPublicRooms(@Param("name") String name, Pageable pageable);
+
+    @Modifying
+    @Query(value = """
+            DELETE FROM chat_rooms
+            WHERE id NOT IN (
+                SELECT DISTINCT room_id FROM chat_room_members
+                WHERE left_at IS NULL AND kicked_at IS NULL
+            )
+            """, nativeQuery = true)
+    int deleteEmptyRooms();
 }
