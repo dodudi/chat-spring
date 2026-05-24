@@ -3,6 +3,7 @@ package com.chat.room.infrastructure;
 import com.chat.room.domain.ChatRoomMember;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -41,6 +42,10 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
             ORDER BY m.createdAt ASC
             """)
     List<ChatRoomMember> findActiveMembersExcluding(@Param("roomId") UUID roomId, @Param("userId") String userId, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE ChatRoomMember m SET m.isHidden = false WHERE m.roomId = :roomId AND m.isHidden = true")
+    void unhideAll(@Param("roomId") UUID roomId);
 
     @Query("""
             SELECT m.roomId AS roomId, p.nickname AS nickname
