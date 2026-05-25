@@ -12,7 +12,9 @@ import com.chat.room.domain.ChatRoomMember;
 import com.chat.room.domain.RoomGroupMembership;
 import com.chat.room.dto.CreateDmRoomRequest;
 import com.chat.room.dto.CreateGroupRoomRequest;
+import com.chat.room.dto.CreatePublicRoomRequest;
 import com.chat.room.dto.DmRoomResponse;
+import com.chat.room.dto.PublicRoomResponse;
 import com.chat.room.dto.RoomResponse;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
@@ -76,6 +78,79 @@ class DefaultRoomCreatorTest {
         assertThat(response.type()).isEqualTo("GROUP");
         verify(chatRoomRepository).save(any(ChatRoom.class));
         verify(chatRoomMemberRepository).save(any(ChatRoomMember.class));
+    }
+
+    @Test
+    @DisplayName("공개방 생성 성공 — PUBLIC 타입, 비밀번호 인코딩, roomKey 할당")
+    void createPublicRoom_success() {
+        // given
+        String userId = "user-1";
+        CreatePublicRoomRequest request = new CreatePublicRoomRequest("공개방", "secret", 1L);
+
+        Profile profile = Profile.create(userId, "닉네임");
+        ChatRoom room = ChatRoom.createPublic(userId, request.name(), "hashed-secret", "public-key-1");
+        UserGroup defaultGroup = UserGroup.createDefault(userId);
+
+        given(profileValidator.validateOwnership(userId, 1L)).willReturn(profile);
+        given(roomPasswordEncoder.encode("secret")).willReturn("hashed-secret");
+        given(roomKeyCreator.createPublicRoomKey()).willReturn("public-key-1");
+        given(chatRoomRepository.save(any(ChatRoom.class))).willReturn(room);
+        given(userGroupRepository.findDefaultByUserId(userId)).willReturn(Optional.of(defaultGroup));
+
+        // when
+        PublicRoomResponse response = roomCreator.createPublicRoom(userId, request);
+
+        // then
+        assertThat(response.type()).isEqualTo("PUBLIC");
+        assertThat(response.roomKey()).isEqualTo("public-key-1");
+        assertThat(response.hasPassword()).isTrue();
+        verify(roomPasswordEncoder).encode("secret");
+        verify(chatRoomRepository).save(any(ChatRoom.class));
+    }
+
+    @Test
+    @DisplayName("공개방 생성 시 비밀번호 없으면 hasPassword false")
+    void createPublicRoom_noPassword_hasPasswordFalse() {
+        // given
+        String userId = "user-1";
+        CreatePublicRoomRequest request = new CreatePublicRoomRequest("공개방", null, 1L);
+
+        ChatRoom room = ChatRoom.createPublic(userId, request.name(), null, "public-key-1");
+        UserGroup defaultGroup = UserGroup.createDefault(userId);
+
+        given(profileValidator.validateOwnership(userId, 1L)).willReturn(Profile.create(userId, "닉네임"));
+        given(roomPasswordEncoder.encode(null)).willReturn(null);
+        given(roomKeyCreator.createPublicRoomKey()).willReturn("public-key-1");
+        given(chatRoomRepository.save(any(ChatRoom.class))).willReturn(room);
+        given(userGroupRepository.findDefaultByUserId(userId)).willReturn(Optional.of(defaultGroup));
+
+        // when
+        PublicRoomResponse response = roomCreator.createPublicRoom(userId, request);
+
+        // then
+        assertThat(response.hasPassword()).isFalse();
+        assertThat(response.type()).isEqualTo("PUBLIC");
+    }
+
+    @Test
+    @DisplayName("공개방은 createPublicRoomKey()를 사용 — 그룹 키 생성 메서드와 분리")
+    void createPublicRoom_usesPublicRoomKey_notGroupKey() {
+        // given
+        String userId = "user-1";
+        CreatePublicRoomRequest request = new CreatePublicRoomRequest("공개방", "pw", 1L);
+
+        given(profileValidator.validateOwnership(userId, 1L)).willReturn(Profile.create(userId, "닉네임"));
+        given(roomPasswordEncoder.encode("pw")).willReturn("hashed");
+        given(roomKeyCreator.createPublicRoomKey()).willReturn("public-key-1");
+        given(chatRoomRepository.save(any(ChatRoom.class))).willReturn(ChatRoom.createPublic(userId, "공개방", "hashed", "public-key-1"));
+        given(userGroupRepository.findDefaultByUserId(userId)).willReturn(Optional.of(UserGroup.createDefault(userId)));
+
+        // when
+        roomCreator.createPublicRoom(userId, request);
+
+        // then
+        verify(roomKeyCreator).createPublicRoomKey();
+        verify(roomKeyCreator, times(0)).createGroupRoomKey();
     }
 
     @Test
