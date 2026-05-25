@@ -94,6 +94,7 @@ class DefaultRoomLeaverTest {
 
         // then
         assertThat(member.getLeftAt()).isNotNull();
+        verify(roomGroupMembershipRepository).deleteByRoomIdAndUserId(roomId, userId);
     }
 
     @Test
@@ -156,6 +157,7 @@ class DefaultRoomLeaverTest {
 
         // then
         verify(chatRoomMemberRepository).delete(member);
+        verify(roomGroupMembershipRepository).deleteByRoomIdAndUserId(roomId, userId);
     }
 
     @Test
@@ -170,5 +172,25 @@ class DefaultRoomLeaverTest {
                 .isInstanceOf(AppException.class)
                 .extracting(e -> ((AppException) e).getErrorCode())
                 .isEqualTo(ErrorCode.ROOM_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("이미 퇴장한 멤버가 GROUP 방 나가기 시 예외 발생")
+    void leaveRoom_groupRoom_alreadyLeft_throwsException() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createGroup("owner", "그룹방", "key");
+        ChatRoomMember member = ChatRoomMember.create(roomId, userId, 1L, MemberRole.MEMBER);
+        member.leave();
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.of(member));
+
+        // when & then
+        assertThatThrownBy(() -> roomLeaver.leaveRoom(userId, roomId))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_MEMBER_NOT_FOUND);
     }
 }
