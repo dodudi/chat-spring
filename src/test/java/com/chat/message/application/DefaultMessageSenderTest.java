@@ -73,6 +73,9 @@ class DefaultMessageSenderTest {
             assertThat(response.senderId()).isEqualTo(userId);
             assertThat(response.senderNickname()).isEqualTo("닉네임");
             verify(messageRepository).save(any(Message.class));
+            // afterCommit 내 publishToRoom 실행은 트랜잭션 컨텍스트가 없어 검증 불가
+            // registerSynchronization 등록 여부만 확인; 실제 발행은 통합 테스트에서 커버
+            txManager.verify(() -> TransactionSynchronizationManager.registerSynchronization(any()));
         }
     }
 
@@ -100,6 +103,26 @@ class DefaultMessageSenderTest {
 
         given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
         given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> messageSender.sendMessage(userId, roomId, new SendMessageRequest("안녕")))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("강퇴된 멤버가 메시지 전송 시 예외 발생")
+    void sendMessage_kickedMember_throwsException() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createGroup("owner", "그룹방", "key");
+        ChatRoomMember member = ChatRoomMember.create(roomId, userId, 1L, MemberRole.MEMBER);
+        member.kick();
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.of(member));
 
         // when & then
         assertThatThrownBy(() -> messageSender.sendMessage(userId, roomId, new SendMessageRequest("안녕")))
