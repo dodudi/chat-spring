@@ -169,6 +169,51 @@ class DefaultMessageReaderTest {
     }
 
     @Test
+    @DisplayName("cursor 값으로 연속 페이징 조회 — cursor 파라미터가 findHistory에 전달됨")
+    void getHistory_withCursor_passedToRepository() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        Long cursor = 5L;
+        ChatRoom room = ChatRoom.createGroup(userId, "그룹방", "key");
+        ChatRoomMember member = ChatRoomMember.create(roomId, userId, 1L, MemberRole.MEMBER);
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.of(member));
+        given(messageRepository.findHistory(eq(roomId), eq(cursor), isNull(), any(Pageable.class)))
+                .willReturn(List.of());
+        given(profileRepository.findAllById(any())).willReturn(List.of());
+
+        // when
+        messageReader.getHistory(userId, roomId, cursor, 20);
+
+        // then
+        verify(messageRepository).findHistory(eq(roomId), eq(cursor), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("메시지가 없는 방 조회 — 빈 목록과 nextCursor null 반환")
+    void getHistory_emptyRoom_returnsEmptyList() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createGroup(userId, "그룹방", "key");
+        ChatRoomMember member = ChatRoomMember.create(roomId, userId, 1L, MemberRole.MEMBER);
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.of(member));
+        given(messageRepository.findHistory(any(), any(), any(), any(Pageable.class))).willReturn(List.of());
+        given(profileRepository.findAllById(any())).willReturn(List.of());
+
+        // when
+        MessageCursorResponse response = messageReader.getHistory(userId, roomId, null, 20);
+
+        // then
+        assertThat(response.messages()).isEmpty();
+        assertThat(response.nextCursor()).isNull();
+    }
+
+    @Test
     @DisplayName("DM 숨김 멤버 조회 — hiddenAt 이후 메시지만 반환")
     void getHistory_dmHiddenMember_filtersFromHiddenAt() {
         // given
