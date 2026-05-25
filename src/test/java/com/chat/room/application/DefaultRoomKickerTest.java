@@ -17,9 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultRoomKickerTest {
@@ -48,7 +48,7 @@ class DefaultRoomKickerTest {
         roomKicker.kickMember(requesterId, roomId, targetUserId);
 
         // then
-        verify(chatRoomMemberRepository).findByRoomIdAndUserId(roomId, targetUserId);
+        assertThat(target.getKickedAt()).isNotNull();
     }
 
     @Test
@@ -128,6 +128,27 @@ class DefaultRoomKickerTest {
         given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
         given(chatRoomMemberRepository.isOwner(roomId, requesterId)).willReturn(true);
         given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, "user-2")).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> roomKicker.kickMember(requesterId, roomId, "user-2"))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("이미 강퇴된 멤버를 재강퇴 시 예외 발생")
+    void kickMember_alreadyKicked_throwsException() {
+        // given
+        String requesterId = "owner";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createGroup(requesterId, "그룹방", "key");
+        ChatRoomMember target = ChatRoomMember.create(roomId, "user-2", 2L, MemberRole.MEMBER);
+        target.kick();
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.isOwner(roomId, requesterId)).willReturn(true);
+        given(chatRoomMemberRepository.findByRoomIdAndUserId(roomId, "user-2")).willReturn(Optional.of(target));
 
         // when & then
         assertThatThrownBy(() -> roomKicker.kickMember(requesterId, roomId, "user-2"))
