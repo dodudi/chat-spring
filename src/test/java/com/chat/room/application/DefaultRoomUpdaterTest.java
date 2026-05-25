@@ -53,6 +53,25 @@ class DefaultRoomUpdaterTest {
     }
 
     @Test
+    @DisplayName("PUBLIC 방 이름 수정 성공")
+    void updateName_publicRoom_success() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createPublic(userId, "기존이름", "hashed", "key");
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.isOwner(roomId, userId)).willReturn(true);
+
+        // when
+        RoomResponse response = roomUpdater.updateName(userId, roomId, new UpdateRoomNameRequest("새이름"));
+
+        // then
+        assertThat(response.name()).isEqualTo("새이름");
+        assertThat(response.type()).isEqualTo("PUBLIC");
+    }
+
+    @Test
     @DisplayName("존재하지 않는 방 이름 수정 시 예외 발생")
     void updateName_roomNotFound_throwsException() {
         // given
@@ -122,6 +141,24 @@ class DefaultRoomUpdaterTest {
     }
 
     @Test
+    @DisplayName("방장 아닌 사용자가 비밀번호 수정 시 예외 발생")
+    void updatePassword_notOwner_throwsException() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createPublic("owner", "공개방", "hashed", "key");
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.isOwner(roomId, userId)).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> roomUpdater.updatePassword(userId, roomId, new UpdateRoomPasswordRequest("newpw")))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_FORBIDDEN);
+    }
+
+    @Test
     @DisplayName("GROUP 방에 비밀번호 수정 시 예외 발생")
     void updatePassword_groupRoom_throwsException() {
         // given
@@ -155,6 +192,24 @@ class DefaultRoomUpdaterTest {
 
         // then
         assertThat(room.getPassword()).isNull();
+    }
+
+    @Test
+    @DisplayName("방장 아닌 사용자가 비밀번호 해제 시 예외 발생")
+    void clearPassword_notOwner_throwsException() {
+        // given
+        String userId = "user-1";
+        UUID roomId = UUID.randomUUID();
+        ChatRoom room = ChatRoom.createPublic("owner", "공개방", "hashed", "key");
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomMemberRepository.isOwner(roomId, userId)).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> roomUpdater.clearPassword(userId, roomId))
+                .isInstanceOf(AppException.class)
+                .extracting(e -> ((AppException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ROOM_FORBIDDEN);
     }
 
     @Test
