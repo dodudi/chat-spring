@@ -495,6 +495,34 @@ private static OffsetDateTime toOffsetDateTime(Instant instant) {
 
 ---
 
+## #020 2026-05-26 — 단위 테스트에서 `room.getId()` null로 인한 Mockito stub 불일치
+
+**증상**
+`DefaultInvitationResponder`, `DefaultInviteLinkJoiner` 테스트에서 `PotentialStubbingProblem` 또는 `AssertionError` 발생.
+`countActiveByRoomId(roomId)` stub이 있어도 실제로는 호출되지 않는 것처럼 동작.
+
+**원인**
+서비스 코드가 `room.getId()`로 후속 쿼리를 호출하는데, 테스트에서 `ChatRoom.createGroup(...)` 으로 생성한 Entity는 DB를 거치지 않아 `@GeneratedValue` ID가 null.
+stub은 `roomId` UUID로 등록되어 있지만 실제 호출은 `null`로 들어와 불일치.
+
+**해결**
+두 가지 패턴을 상황에 맞게 사용:
+
+1. `room.getId()`를 사용하는 stub에 `any()` 매처 적용:
+```java
+given(chatRoomMemberRepository.countActiveByRoomId(any())).willReturn(3L);
+given(chatRoomMemberRepository.findByRoomIdAndUserId(any(), anyString())).willReturn(Optional.empty());
+```
+
+2. 리턴된 값을 Map key로 쓰는 경우 (`Collectors.toMap(ChatRoom::getId, ...)`) 리플렉션으로 ID 직접 설정:
+```java
+Field idField = ChatRoom.class.getDeclaredField("id");
+idField.setAccessible(true);
+idField.set(room, roomId);
+```
+
+---
+
 ## #006 2026-05-23 — 개발 착수 전 PRD·DB·API 설계 검토 및 결정 사항
 
 **증상**: 개발 전 설계 문서 간 불일치 및 미결 사항 6건 발견
