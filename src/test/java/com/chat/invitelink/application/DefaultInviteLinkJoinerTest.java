@@ -13,6 +13,7 @@ import com.chat.room.application.RoomCapacityPolicy;
 import com.chat.room.domain.ChatRoom;
 import com.chat.room.domain.ChatRoomMember;
 import com.chat.room.domain.MemberRole;
+import com.chat.room.domain.RoomGroupMembership;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
 import com.chat.room.infrastructure.RoomGroupMembershipRepository;
@@ -75,6 +76,7 @@ class DefaultInviteLinkJoinerTest {
 
         // then
         verify(chatRoomMemberRepository).save(any(ChatRoomMember.class));
+        verify(roomGroupMembershipRepository).save(any(RoomGroupMembership.class));
     }
 
     @Test

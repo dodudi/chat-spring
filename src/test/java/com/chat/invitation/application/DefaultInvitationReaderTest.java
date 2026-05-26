@@ -11,8 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,16 +31,14 @@ class DefaultInvitationReaderTest {
 
     @Test
     @DisplayName("대기 중인 초대 목록 조회 성공")
-    void getPendingInvitations_성공() throws Exception {
+    void getPendingInvitations_성공() {
         // given
         String userId = "user-1";
         UUID roomId = UUID.randomUUID();
         Invitation invitation = Invitation.create(roomId, "owner", userId);
         ChatRoom room = ChatRoom.createGroup("owner", "그룹방", "key");
-        // ChatRoom.id는 @GeneratedValue라 단위테스트에서 null — 리플렉션으로 설정
-        Field idField = ChatRoom.class.getDeclaredField("id");
-        idField.setAccessible(true);
-        idField.set(room, roomId);
+        // ChatRoom.id는 @GeneratedValue라 단위테스트에서 null — 설정 필요
+        ReflectionTestUtils.setField(room, "id", roomId);
 
         given(invitationRepository.findPendingByInviteeId(userId)).willReturn(List.of(invitation));
         given(chatRoomRepository.findAllById(any())).willReturn(List.of(room));

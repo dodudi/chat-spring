@@ -7,6 +7,7 @@ import com.chat.message.domain.ReadCursor;
 import com.chat.message.dto.MarkReadRequest;
 import com.chat.message.infrastructure.MessageRepository;
 import com.chat.message.infrastructure.ReadCursorRepository;
+import com.chat.room.domain.ChatRoom;
 import com.chat.room.infrastructure.ChatRoomMemberRepository;
 import com.chat.room.infrastructure.ChatRoomRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +45,7 @@ class DefaultReadCursorUpdaterTest {
         UUID roomId = UUID.randomUUID();
         Message message = Message.create(roomId, "sender", 1L, "내용");
 
-        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(com.chat.room.domain.ChatRoom.createGroup("owner", "방", "key")));
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(ChatRoom.createGroup("owner", "방", "key")));
         given(chatRoomMemberRepository.existsActiveMember(roomId, userId)).willReturn(true);
         given(messageRepository.findById(10L)).willReturn(Optional.of(message));
         given(readCursorRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.empty());
@@ -66,7 +67,7 @@ class DefaultReadCursorUpdaterTest {
         Message message = Message.create(roomId, "sender", 1L, "내용");
         ReadCursor existingCursor = ReadCursor.create(roomId, userId, 5L);
 
-        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(com.chat.room.domain.ChatRoom.createGroup("owner", "방", "key")));
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(ChatRoom.createGroup("owner", "방", "key")));
         given(chatRoomMemberRepository.existsActiveMember(roomId, userId)).willReturn(true);
         given(messageRepository.findById(10L)).willReturn(Optional.of(message));
         given(readCursorRepository.findByRoomIdAndUserId(roomId, userId)).willReturn(Optional.of(existingCursor));
@@ -100,7 +101,7 @@ class DefaultReadCursorUpdaterTest {
         // given
         String userId = "user-1";
         UUID roomId = UUID.randomUUID();
-        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(com.chat.room.domain.ChatRoom.createGroup("owner", "방", "key")));
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(ChatRoom.createGroup("owner", "방", "key")));
         given(chatRoomMemberRepository.existsActiveMember(roomId, userId)).willReturn(false);
 
         // when & then
@@ -119,7 +120,7 @@ class DefaultReadCursorUpdaterTest {
         UUID otherRoomId = UUID.randomUUID();
         Message messageInOtherRoom = Message.create(otherRoomId, "sender", 1L, "내용");
 
-        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(com.chat.room.domain.ChatRoom.createGroup("owner", "방", "key")));
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(ChatRoom.createGroup("owner", "방", "key")));
         given(chatRoomMemberRepository.existsActiveMember(roomId, userId)).willReturn(true);
         given(messageRepository.findById(10L)).willReturn(Optional.of(messageInOtherRoom));
 
