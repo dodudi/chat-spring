@@ -83,6 +83,8 @@ README2.md
 TEST.md
 presentation.html
 .claude/*
+.claude/settings.json
+.claude/settings.local.json
 !.claude/rules/
 !.claude/rules/*
 !.claude/docs/
