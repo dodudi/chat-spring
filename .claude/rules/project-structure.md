@@ -44,9 +44,18 @@ src/
 # Controller
 UserController.java
 
-# Service (인터페이스 + 구현체)
-UserService.java
-UserServiceImpl.java         # 구현체가 여러 개일 경우에만 분리
+# Service
+# 구현체가 1개이고 교체 가능성 없음 → 구체 클래스만
+ChatService.java
+
+# 구현체가 2개 이상이거나 테스트에서 Mock 필요 → 인터페이스 + 구현체
+# 인터페이스: 역할 중심 명사형 (I 접두사 금지)
+# 구현체: 기본 구현은 Default 접두사, 대체 구현은 기술/방식 접두사
+ChatService.java             # 인터페이스
+DefaultChatService.java      # 기본 구현체
+RedisChatService.java        # 대체 구현체 (예: 저장소 변경 시)
+
+# 인터페이스 도입 기준 상세 → code-style.md 인터페이스 설계 참고
 
 # Repository
 UserRepository.java
