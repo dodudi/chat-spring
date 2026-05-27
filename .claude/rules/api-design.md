@@ -134,4 +134,26 @@ public class UserController {
 
 - ISO 8601 형식 사용: `2024-01-15T09:30:00Z`
 - 타임존은 UTC 기준으로 주고받음
-- 응답 시 `ZonedDateTime` 또는 `Instant` 사용
+- 모든 날짜/시간 타입은 `OffsetDateTime` 사용
+
+```java
+// ✅ Entity 필드
+private OffsetDateTime createdAt;
+
+// ✅ DTO 응답 — UTC offset 명시
+public record MessageResponse(Long id, String content, OffsetDateTime sentAt) { }
+
+// ✅ 현재 시각 생성
+OffsetDateTime.now(ZoneOffset.UTC)
+
+// ❌ 사용 금지
+LocalDateTime  // offset 없음 — DB 저장 시 타임존 소실
+ZonedDateTime  // 타임존 규칙(DST 등) 불필요 — API 통신은 항상 UTC
+Instant        // Hibernate 6 + PostgreSQL TIMESTAMPTZ 매핑 시 드라이버 설정 의존성 발생
+```
+
+**Jackson 직렬화 결과**
+
+```json
+"sentAt": "2024-01-15T09:30:00Z"
+```

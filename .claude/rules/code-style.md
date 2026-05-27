@@ -159,6 +159,79 @@ import java.util.*;
 @Data  // equals/hashCode 자동 생성이 JPA Entity에서 문제 유발
 ```
 
+### 인터페이스 설계
+
+**사용 기준**
+
+| 상황 | 판단 |
+|---|---|
+| 구현체가 2개 이상 존재하거나 예정 | ✅ 인터페이스 도입 |
+| 테스트에서 Mock으로 대체해야 함 | ✅ 인터페이스 도입 |
+| 구현체가 1개이고 교체 가능성 없음 | ❌ 인터페이스 불필요 — 구체 클래스 직접 사용 |
+| "혹시 나중에 쓸 수도 있어서" | ❌ YAGNI — 도입하지 않음 |
+
+**네이밍**
+
+- `I` 접두사 금지 (`IUserService` ❌)
+- 역할/능력 중심의 명사형으로 작성
+
+```java
+// ✅ 역할 중심
+public interface MessageSender { ... }
+public interface UserReader { ... }
+public interface NotificationPort { ... }  // 외부 시스템 연동 포트
+
+// ❌ 단순 클래스명 복사
+public interface IUserService { ... }
+public interface UserServiceInterface { ... }
+```
+
+**default 메서드**
+
+- 기존 인터페이스에 메서드를 추가할 때 하위 호환성 유지 목적으로만 허용
+- 공통 로직 재사용 수단으로 사용 금지 → abstract class 또는 별도 유틸로 분리
+
+### 추상 클래스 설계
+
+**사용 기준**
+
+- 상태(필드)와 부분 구현을 함께 공유해야 할 때 사용
+- 인터페이스만으로 공통 로직을 담을 수 없을 때 사용
+- 대표 사례: JPA Entity 공통 필드(`createdAt`, `updatedAt`) 를 담는 base class
+
+```java
+// ✅ 공통 감사 필드 추상 클래스
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class BaseTimeEntity {
+
+    @CreatedDate
+    private OffsetDateTime createdAt;
+
+    @LastModifiedDate
+    private OffsetDateTime updatedAt;
+}
+
+// ✅ 상속
+@Entity
+public class ChatRoom extends BaseTimeEntity { ... }
+```
+
+**네이밍**
+
+- 직접 인스턴스화할 수 없는 기반 클래스임을 드러낼 때 `Abstract` 접두사 사용
+- JPA base entity처럼 역할이 명확하면 `Base` 접두사도 허용
+
+```java
+public abstract class AbstractExternalApiClient { ... }  // 외부 API 클라이언트 공통 로직
+public abstract class BaseTimeEntity { ... }             // JPA 감사 필드
+```
+
+**금지 사항**
+
+- 인터페이스 대신 추상 클래스로 계약을 정의하는 것 금지 (Java 단일 상속 제약)
+- 추상 클래스에 비즈니스 로직 집중 금지 — 공통 인프라 코드만 허용
+
 ---
 
 ## 6. 메서드 설계
