@@ -91,4 +91,10 @@ presentation.html
 !.claude/docs/*
 !.claude/docs/design/
 !.claude/docs/design/*
+!.claude/docs/decisions/
+!.claude/docs/decisions/*
+!.claude/docs/troubleshooting/
+!.claude/docs/troubleshooting/*
+!.claude/docs/changelog/
+!.claude/docs/changelog/*
 test-client
