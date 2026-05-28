@@ -124,6 +124,8 @@
 }
 ```
 
+> DM 타입의 `name`은 상대방 `profiles.nickname` 값. 요청한 사용자의 userId와 `dm_rooms.user1_id` / `user2_id`를 비교해 상대방 userId를 판별한 후 조회.
+
 ---
 
 ### GET /api/v1/chat-rooms/{roomId}
@@ -143,6 +145,8 @@
 }
 ```
 
+> DM 타입의 `name`은 상대방 `profiles.nickname` 값. 목록 조회와 동일한 방식으로 판별.
+
 **에러**
 | 코드 | 상황 |
 |------|------|
@@ -153,6 +157,11 @@
 
 ### DELETE /api/v1/chat-rooms/{roomId}
 채팅방 삭제. OWNER 전용.
+
+> 소프트 삭제: `chat_rooms.deleted_at` 기록. 메시지·멤버·초대 데이터는 유지.
+> 삭제된 채팅방은 모든 조회에서 제외. Redis `messages:{roomId}`, `read_cursor:{roomId}` 키 삭제.
+> `room_group_memberships`에서 해당 roomId 레코드 모두 삭제.
+> 현재 구독 중인 멤버에게 `ROOM_DELETED` WebSocket 이벤트 브로드캐스트.
 
 **응답 204**
 
@@ -165,7 +174,7 @@
 ---
 
 ### POST /api/v1/chat-rooms/dm
-DM 채팅방 생성. 이미 존재하면 기존 방 반환.
+DM 채팅방 생성. 이미 존재하면 기존 방 반환. 소프트 삭제된 방이 있으면 재활성화.
 
 **요청**
 ```json
@@ -178,7 +187,7 @@ DM 채팅방 생성. 이미 존재하면 기존 방 반환.
 |------|------|------|------|
 | `targetUserId` | String | Y | 본인 ID 불가 |
 
-**응답 200** (기존 방 반환) / **201** (신규 생성)
+**응답 200** (기존 방 반환 또는 재활성화) / **201** (신규 생성)
 ```json
 {
   "success": true,
@@ -193,6 +202,7 @@ DM 채팅방 생성. 이미 존재하면 기존 방 반환.
 | 코드 | 상황 |
 |------|------|
 | `PROFILE_NOT_FOUND` | 상대방 프로필 없음 |
+| `CANNOT_DM_SELF` | 본인에게 DM 시도 |
 
 ---
 
@@ -266,9 +276,11 @@ PUBLIC 채널 목록 조회. (페이지네이션)
 **쿼리 파라미터**
 | 파라미터 | 타입 | 기본값 | 설명 |
 |----------|------|--------|------|
-| `cursor` | String | — | 마지막 조회 roomId (없으면 처음부터) |
+| `cursor` | String (UUID) | — | 마지막 조회 roomId. 없으면 처음부터 |
 | `size` | Int | 20 | 조회 개수 |
 | `keyword` | String | — | 채널명 검색 |
+
+> 정렬 기준: `created_at DESC`. cursor 수신 시 서버는 해당 roomId의 `created_at`을 조회한 뒤 `WHERE created_at < :pivot ORDER BY created_at DESC, room_id ASC LIMIT :size` 실행.
 
 **응답 200**
 ```json
@@ -280,7 +292,8 @@ PUBLIC 채널 목록 조회. (페이지네이션)
         "roomId": "772g0622-g41d-63f6-c938-668877662222",
         "roomKey": "dev-general",
         "name": "개발 일반",
-        "memberCount": 42
+        "memberCount": 42,
+        "createdAt": "2024-01-15T09:30:00Z"
       }
     ],
     "nextCursor": "772g0622-...",
@@ -293,6 +306,8 @@ PUBLIC 채널 목록 조회. (페이지네이션)
 
 ### POST /api/v1/chat-rooms/public/{roomKey}/join
 PUBLIC 채널 참여.
+
+> 이전에 나갔던 사용자가 재참여하면 기존 `chat_room_members` row를 재활성화 (`left_at = NULL`, `joined_at` 갱신, `role = MEMBER`, `is_hidden = false`, `hidden_at = NULL`).
 
 **응답 200**
 ```json
@@ -311,6 +326,7 @@ PUBLIC 채널 참여.
 |------|------|
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채널 |
 | `MEMBER_ALREADY_EXISTS` | 이미 참여 중 |
+| `MEMBER_KICKED_OUT` | 강퇴된 사용자 |
 
 ---
 
@@ -349,7 +365,7 @@ PUBLIC 채널 참여.
 ---
 
 ### PATCH /api/v1/chat-rooms/{roomId}/members/{userId}/role
-멤버 역할 변경. OWNER 전용.
+멤버 역할 변경. OWNER 전용. 본인(OWNER) 역할은 변경 불가.
 
 **요청**
 ```json
@@ -370,11 +386,14 @@ PUBLIC 채널 참여.
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채팅방 |
 | `MEMBER_NOT_FOUND` | 대상 멤버 없음 |
 | `MEMBER_PERMISSION_DENIED` | OWNER가 아닌 경우 |
+| `CANNOT_CHANGE_OWNER_ROLE` | 본인(OWNER) 역할 변경 시도 |
 
 ---
 
 ### DELETE /api/v1/chat-rooms/{roomId}/members/me
-채팅방 나가기. `left_at` 기록.
+채팅방 나가기. `left_at` 기록. `room_group_memberships`에서 해당 방 할당 자동 해제.
+
+> OWNER는 나가기 불가. 방을 없애려면 채팅방 삭제(`DELETE /api/v1/chat-rooms/{roomId}`)를 사용.
 
 **응답 204**
 
@@ -383,11 +402,14 @@ PUBLIC 채널 참여.
 |------|------|
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채팅방 |
 | `MEMBER_NOT_FOUND` | 이미 나간 상태 |
+| `OWNER_CANNOT_LEAVE` | OWNER는 나가기 불가 |
 
 ---
 
 ### PATCH /api/v1/chat-rooms/{roomId}/members/me/hidden
 채팅방 나만 숨기기. 상대방에게는 유지, 내 목록에서만 제거. `is_hidden = true` 기록.
+
+> 이미 숨김 상태여도 204 반환 (멱등).
 
 **응답 204**
 
@@ -400,7 +422,9 @@ PUBLIC 채널 참여.
 ---
 
 ### DELETE /api/v1/chat-rooms/{roomId}/members/{userId}
-멤버 강제 추방. OWNER / ADMIN 전용. `kicked_at` 기록.
+멤버 강제 추방. OWNER / ADMIN 전용. `chat_room_members`에서 해당 row 제거 후 `room_bans`에 이력 기록. `room_group_memberships`에서 해당 사용자의 이 채팅방 할당 자동 해제.
+
+> 추방 권한: OWNER는 ADMIN·MEMBER 추방 가능. ADMIN은 MEMBER만 추방 가능 (같은 레벨 ADMIN 추방 불가). OWNER는 추방 불가.
 
 **응답 204**
 
@@ -409,14 +433,17 @@ PUBLIC 채널 참여.
 |------|------|
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채팅방 |
 | `MEMBER_NOT_FOUND` | 대상 멤버 없음 |
-| `MEMBER_PERMISSION_DENIED` | OWNER/ADMIN이 아닌 경우 |
+| `MEMBER_PERMISSION_DENIED` | OWNER/ADMIN이 아닌 경우, 또는 ADMIN이 ADMIN 추방 시도 |
+| `CANNOT_KICK_OWNER` | OWNER 추방 시도 |
 
 ---
 
 ## 4. 초대
 
 ### POST /api/v1/chat-rooms/{roomId}/invitations
-특정 사용자에게 초대장 발송. 멤버 누구나 가능.
+특정 사용자에게 초대장 발송. GROUP 타입 채팅방만 가능. 멤버 누구나 가능.
+
+> `expires_at`은 서버가 생성 시각 기준 **24시간** 후로 자동 설정.
 
 **요청**
 ```json
@@ -438,7 +465,7 @@ PUBLIC 채널 참여.
     "roomId": "550e8400-e29b-41d4-a716-446655440000",
     "inviteeId": "user-xyz",
     "status": "PENDING",
-    "expiresAt": "2024-01-22T09:30:00Z",
+    "expiresAt": "2024-01-16T09:30:00Z",
     "createdAt": "2024-01-15T09:30:00Z"
   }
 }
@@ -449,13 +476,15 @@ PUBLIC 채널 참여.
 |------|------|
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채팅방 |
 | `CHAT_ROOM_ACCESS_DENIED` | 멤버가 아닌 경우 |
+| `INVALID_ROOM_TYPE` | DM·PUBLIC 방에 초대 시도 |
+| `PROFILE_NOT_FOUND` | 존재하지 않는 inviteeId |
 | `MEMBER_ALREADY_EXISTS` | 대상이 이미 멤버 |
 | `INVITATION_ALREADY_PROCESSED` | 이미 PENDING 초대 존재 |
 
 ---
 
 ### GET /api/v1/invitations
-내게 온 PENDING 초대 목록 조회.
+내게 온 PENDING 초대 목록 조회. 만료된 초대(`expires_at < 현재 시각`)는 제외.
 
 **응답 200**
 ```json
@@ -502,17 +531,21 @@ PUBLIC 채널 참여.
 }
 ```
 
+> 만료된 초대(`expires_at < 현재 시각`)는 수락/거절 불가. 별도 배치 없이 접근 시점에 만료 여부 검사(Lazy evaluation).
+> `ACCEPTED` 시 `chat_room_members`에 추가. 이전에 나갔던 사용자(`left_at IS NOT NULL`)는 재활성화 (`left_at = NULL`, `joined_at` 갱신, `role = MEMBER`, `is_hidden = false`, `hidden_at = NULL`). WebSocket `MEMBER_JOINED` 이벤트 발행.
+> 초대 대상이 `room_bans`에 등록된 사용자인 경우 (OWNER/ADMIN이 직접 초대로 복귀 허용): `room_bans` 레코드 삭제 후 `chat_room_members` 추가.
+
 **에러**
 | 코드 | 상황 |
 |------|------|
-| `INVITATION_NOT_FOUND` | 존재하지 않는 초대 |
+| `INVITATION_NOT_FOUND` | 존재하지 않는 초대 또는 본인 초대가 아닌 경우 |
 | `INVITATION_EXPIRED` | 만료된 초대 |
 | `INVITATION_ALREADY_PROCESSED` | 이미 수락/거절된 초대 |
 
 ---
 
 ### POST /api/v1/chat-rooms/{roomId}/invite-links
-초대 링크 생성. 멤버 누구나 가능.
+초대 링크 생성. GROUP 타입 채팅방만 가능. 멤버 누구나 가능.
 
 **요청**
 ```json
@@ -544,11 +577,12 @@ PUBLIC 채널 참여.
 |------|------|
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채팅방 |
 | `CHAT_ROOM_ACCESS_DENIED` | 멤버가 아닌 경우 |
+| `INVALID_ROOM_TYPE` | DM·PUBLIC 방에 초대 링크 생성 시도 |
 
 ---
 
 ### GET /api/v1/chat-rooms/{roomId}/invite-links
-채팅방의 활성 초대 링크 목록 조회. 멤버 누구나 가능.
+채팅방의 초대 링크 목록 조회 (만료·비활성 포함 전체). 멤버 누구나 가능.
 
 **응답 200**
 ```json
@@ -576,7 +610,7 @@ PUBLIC 채널 참여.
 ---
 
 ### PATCH /api/v1/chat-rooms/{roomId}/invite-links/{linkId}/deactivate
-초대 링크 비활성화. `is_active = false` 처리.
+초대 링크 비활성화. `is_active = false` 처리. 링크 생성자 또는 OWNER/ADMIN만 가능.
 
 **응답 204**
 
@@ -585,11 +619,14 @@ PUBLIC 채널 참여.
 |------|------|
 | `INVITE_LINK_NOT_FOUND` | 존재하지 않는 링크 |
 | `CHAT_ROOM_ACCESS_DENIED` | 멤버가 아닌 경우 |
+| `MEMBER_PERMISSION_DENIED` | 생성자/OWNER/ADMIN이 아닌 경우 |
 
 ---
 
 ### POST /api/v1/invite-links/{token}/join
 초대 링크 토큰으로 채팅방 참여.
+
+> 이전에 나갔던 사용자가 재참여하면 기존 `chat_room_members` row를 재활성화 (`left_at = NULL`, `joined_at` 갱신, `role = MEMBER`, `is_hidden = false`, `hidden_at = NULL`).
 
 **응답 200**
 ```json
@@ -609,6 +646,7 @@ PUBLIC 채널 참여.
 | `INVITE_LINK_NOT_FOUND` | 존재하지 않는 토큰 |
 | `INVITE_LINK_EXPIRED` | 만료되었거나 비활성화된 링크 |
 | `MEMBER_ALREADY_EXISTS` | 이미 참여 중 |
+| `MEMBER_KICKED_OUT` | 강퇴된 사용자 |
 
 ---
 
@@ -616,6 +654,8 @@ PUBLIC 채널 참여.
 
 ### POST /api/v1/chat-rooms/{roomId}/messages
 메시지 전송. WebSocket 연결이 없을 때 HTTP fallback으로도 사용 가능.
+
+> HTTP로 전송한 메시지도 동일하게 Redis Pub/Sub을 통해 WebSocket 구독자에게 `MESSAGE` 이벤트로 브로드캐스트.
 
 **요청**
 ```json
@@ -641,7 +681,8 @@ PUBLIC 채널 참여.
     "senderNickname": "홍길동",
     "content": "안녕하세요!",
     "messageType": "TEXT",
-    "createdAt": "2024-01-15T09:30:00Z"
+    "createdAt": "2024-01-15T09:30:00Z",
+    "unreadCount": 4
   }
 }
 ```
@@ -676,7 +717,8 @@ PUBLIC 채널 참여.
         "content": "안녕하세요!",
         "messageType": "TEXT",
         "createdAt": "2024-01-15T09:30:02Z",
-        "deleted": false
+        "deleted": false,
+        "unreadCount": 2
       },
       {
         "messageId": 1704067201001,
@@ -685,7 +727,8 @@ PUBLIC 채널 참여.
         "content": null,
         "messageType": "TEXT",
         "createdAt": "2024-01-15T09:30:01Z",
-        "deleted": true
+        "deleted": true,
+        "unreadCount": 0
       }
     ],
     "nextCursor": 1704067201001,
@@ -695,6 +738,7 @@ PUBLIC 채널 참여.
 ```
 
 > 철회된 메시지는 `deleted: true`, `content: null` 로 반환.
+> `unreadCount`: 해당 메시지를 아직 읽지 않은 활성 멤버 수. Redis `read_cursor:{roomId}`에서 cursor가 해당 messageId보다 작은 멤버 수로 계산. Redis 장애 시 0 반환.
 
 **에러**
 | 코드 | 상황 |
@@ -731,6 +775,9 @@ PUBLIC 채널 참여.
 |------|------|------|------|
 | `lastReadMessageId` | Long | Y | 마지막으로 읽은 Snowflake ID |
 
+> `lastReadMessageId`가 해당 채팅방(`roomId`)에 속한 메시지인지 검증. 다른 방의 messageId를 넘기면 `MESSAGE_NOT_FOUND` 반환.
+> 처리 완료 후 `/topic/rooms/{roomId}`로 `READ` 이벤트 브로드캐스트.
+
 **응답 204**
 
 **에러**
@@ -738,6 +785,7 @@ PUBLIC 채널 참여.
 |------|------|
 | `CHAT_ROOM_NOT_FOUND` | 존재하지 않는 채팅방 |
 | `CHAT_ROOM_ACCESS_DENIED` | 멤버가 아닌 경우 |
+| `MESSAGE_NOT_FOUND` | 해당 채팅방에 존재하지 않는 messageId |
 
 ---
 
@@ -869,6 +917,8 @@ PUBLIC 채널 참여.
 ### PUT /api/v1/user-groups/{groupId}/rooms/{roomId}
 채팅방을 그룹에 할당. 내가 참여 중인 채팅방만 가능.
 
+> 이미 해당 그룹에 할당된 채팅방이면 204 반환 (멱등).
+
 **응답 204**
 
 **에러**
@@ -922,6 +972,8 @@ PUBLIC 채널 참여.
 |------|------|
 | `/topic/rooms/{roomId}` | 채팅방의 모든 실시간 이벤트 수신 |
 
+> 구독 시 서버에서 채팅방이 활성 상태(`deleted_at IS NULL`)이고 활성 멤버(`left_at IS NULL`)인지 검증. 조건 미충족 시 구독 거부 (STOMP ERROR 프레임 반환).
+
 ---
 
 ### 서버 → 클라이언트 이벤트
@@ -939,7 +991,8 @@ PUBLIC 채널 참여.
     "senderNickname": "홍길동",
     "content": "안녕하세요!",
     "messageType": "TEXT",
-    "createdAt": "2024-01-15T09:30:00Z"
+    "createdAt": "2024-01-15T09:30:00Z",
+    "unreadCount": 4
   }
 }
 ```
@@ -968,6 +1021,8 @@ PUBLIC 채널 참여.
 }
 ```
 
+> 발행 조건: 초대 수락(`ACCEPTED`), 초대 링크 참여, PUBLIC 채널 참여 세 경우 모두 발행.
+
 #### MEMBER_LEFT — 멤버 퇴장 (나가기 / 강제 추방)
 ```json
 {
@@ -982,6 +1037,18 @@ PUBLIC 채널 참여.
 
 > `reason`: `LEFT` (본인 나가기) / `KICKED` (강제 추방)
 
+#### ROOM_DELETED — 채팅방 삭제
+```json
+{
+  "type": "ROOM_DELETED",
+  "data": {
+    "roomId": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+---
+
 #### READ — 읽음 이벤트
 ```json
 {
@@ -993,6 +1060,7 @@ PUBLIC 채널 참여.
   }
 }
 ```
+
 
 ---
 
@@ -1018,6 +1086,8 @@ SEND /app/rooms/{roomId}/read
   "lastReadMessageId": 1704067202005
 }
 ```
+
+> `lastReadMessageId`가 해당 `roomId`에 속한 메시지인지 검증. 유효하지 않으면 무시.
 
 ---
 
