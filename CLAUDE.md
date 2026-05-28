@@ -15,6 +15,14 @@ Spring Boot 기반 채팅 서비스 백엔드 프로젝트입니다.
 | [testing.md](.claude/rules/testing.md) | 테스트 종류별 작성 기준, given/when/then 구조 |
 | [git-convention.md](.claude/rules/git-convention.md) | 브랜치 전략, 커밋 메시지 형식, PR 규칙 |
 
+## 기획 문서
+
+| 문서 | 내용 |
+|------|------|
+| [prd.md](.claude/docs/spec/prd.md) | 제품 요구사항, 핵심 기능, 사용자 시나리오 |
+| [erd.md](.claude/docs/spec/erd.md) | 테이블 정의, 컬럼 타입/제약 조건, 관계 정의 |
+| [api.md](.claude/docs/spec/api.md) | 전체 엔드포인트 목록, 요청/응답 상세 명세 |
+
 ## 아키텍처 결정 기록 (ADR)
 
 | 문서 | 결정 내용 |

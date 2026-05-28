@@ -20,9 +20,6 @@ src/
 - 테스트 메서드명: `{메서드명}_{상황}_{기대결과}` (한글도 허용)
 
 ```java
-// 영문
-void getUser_whenUserExists_returnsUser()
-
 // 한글 (가독성 우선)
 void 사용자_조회_성공()
 void 존재하지_않는_사용자_조회시_예외발생()
