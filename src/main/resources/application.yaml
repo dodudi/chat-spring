@@ -1,6 +1,11 @@
 spring:
   application:
     name: chat-spring
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_SERVER_ISSUER_URI}
 
 server:
   port: 8100
