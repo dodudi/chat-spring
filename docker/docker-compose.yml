@@ -1,0 +1,33 @@
+services:
+  chat-postgres:
+    image: postgres:17-alpine
+    env_file:
+      - .env
+    ports:
+      - "8110:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rudy -d chat" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chat-network
+  chat-redis:
+    image: redis:7-alpine
+    ports:
+      - "8120:6379"
+    volumes:
+      - ./redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chat-network
+
+networks:
+  chat-network:
+    external: true

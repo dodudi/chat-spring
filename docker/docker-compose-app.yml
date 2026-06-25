@@ -1,0 +1,17 @@
+services:
+  chat-app:
+    build:
+      context: ..
+      dockerfile: ../Dockerfile
+    container_name: chat-app
+    env_file:
+      - .env
+    ports:
+      - "8100:8100"
+    restart: unless-stopped
+    networks:
+      - chat-network
+
+networks:
+  chat-network:
+    external: true
