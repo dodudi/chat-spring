@@ -44,7 +44,7 @@ Packages are organized by **domain**, not by technical layer:
 
 ```
 kr.it.rudy.chat/
-├── common/           shared infrastructure (exception, filter, response, util, config)
+├── common/           shared infrastructure (exception, filter, response, util, config, aop)
 └── {domain}/
     ├── domain/       Entity, Repository interface, Enum
     ├── domain/support/  Repository custom impl (Spring Data JPA naming: {Repo}Impl)
@@ -81,6 +81,10 @@ Convention rules are in `.claude/rules/`. The critical ones:
 - Failure: `ApiResponse.fail(errorCode)` — no separate `ErrorResponse` class
 
 **Logging**: Structured tags — `log.info("[USER_SIGNUP] email={}", email)`. `MDC.put("traceId", ...)` is managed by `RequestLoggingFilter` — do not call it manually.
+
+**AOP**: Aspects go in `common/aop/` (or `{domain}/aop/`). Declare `@Aspect` + `@Component` + `@Slf4j` together. Extract complex pointcuts with `@Pointcut`. Never swallow exceptions in `@Around` — always rethrow. See `aop-conventions.md`.
+
+**Comments**: No comments by default. Inline `//` inside a method for non-obvious WHY only. Javadoc `/** */` outside a method for design intent or hidden constraints. Never explain WHAT — well-named identifiers do that. See `comment-conventions.md`.
 
 ## Test Conventions
 
