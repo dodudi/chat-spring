@@ -86,6 +86,8 @@ Convention rules are in `.claude/rules/`. The critical ones:
 
 **Comments**: No comments by default. Inline `//` inside a method for non-obvious WHY only. Javadoc `/** */` outside a method for design intent or hidden constraints. Never explain WHAT — well-named identifiers do that. See `comment-conventions.md`.
 
+**Flyway**: Migration files in `src/main/resources/db/migration/`. Each domain owns a fixed integer version (V2=User, V3=Server, V4=Channel, V5=Message, V6=Friend, V7=DM, V8=Notification); changes to that domain use sub-versions (`V2.1`, `V2.2`, ...). Never edit an already-applied file — add a new sub-version instead. `out-of-order: true` is enabled globally. PostgreSQL-native syntax only (`BIGSERIAL`, `TIMESTAMPTZ`, `CREATE TYPE ... AS ENUM`). All ENUM types declared in `V1__create_enum_types.sql`. Local H2 profile disables Flyway (`spring.flyway.enabled: false`) and uses `ddl-auto: create-drop`. See `flyway-conventions.md`.
+
 ## Test Conventions
 
 | Test type | Annotation |
