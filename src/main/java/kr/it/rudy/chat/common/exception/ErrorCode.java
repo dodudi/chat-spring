@@ -18,6 +18,14 @@ public enum ErrorCode {
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "US001", "사용자를 찾을 수 없습니다."),
 
+    // Friend
+    FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FR001", "친구 요청을 찾을 수 없습니다."),
+    FRIEND_REQUEST_ALREADY_EXISTS(HttpStatus.CONFLICT, "FR002", "이미 친구 요청이 존재합니다."),
+    ALREADY_FRIENDS(HttpStatus.CONFLICT, "FR003", "이미 친구 관계입니다."),
+    SELF_FRIEND_REQUEST(HttpStatus.BAD_REQUEST, "FR004", "자기 자신에게 친구 요청을 보낼 수 없습니다."),
+    FRIEND_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "FR005", "친구 요청을 처리할 권한이 없습니다."),
+    FRIENDSHIP_NOT_FOUND(HttpStatus.NOT_FOUND, "FR006", "친구 관계를 찾을 수 없습니다."),
+
     // Message
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MS001", "메시지를 찾을 수 없습니다."),
     MESSAGE_EDIT_FORBIDDEN(HttpStatus.FORBIDDEN, "MS002", "메시지를 수정할 권한이 없습니다."),
