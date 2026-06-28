@@ -4,6 +4,8 @@ import kr.it.rudy.chat.channel.domain.Channel;
 import kr.it.rudy.chat.channel.domain.ChannelRepository;
 import kr.it.rudy.chat.common.exception.AuthException;
 import kr.it.rudy.chat.common.exception.ErrorCode;
+import kr.it.rudy.chat.common.websocket.WebSocketDestination;
+import kr.it.rudy.chat.common.websocket.WebSocketEvent;
 import kr.it.rudy.chat.message.domain.*;
 import kr.it.rudy.chat.message.dto.*;
 import kr.it.rudy.chat.server.domain.ServerMemberRepository;
@@ -12,6 +14,7 @@ import kr.it.rudy.chat.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,7 @@ public class SimpleMessageService implements MessageService {
     private final ChannelRepository channelRepository;
     private final ServerMemberRepository serverMemberRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -44,6 +48,7 @@ public class SimpleMessageService implements MessageService {
                 Message.create(channel, user, request.content(), request.type(), parentMessage)
         );
         log.info("[MESSAGE_SEND] externalId={} channelId={} messageId={}", externalId, channelId, message.getId());
+        messagingTemplate.convertAndSend(WebSocketDestination.channel(channelId), WebSocketEvent.of("MESSAGE_CREATED", MessageResponse.from(message)));
         return MessageResponse.from(message);
     }
 
@@ -69,6 +74,7 @@ public class SimpleMessageService implements MessageService {
         }
         message.edit(request.content());
         log.info("[MESSAGE_EDIT] externalId={} messageId={}", externalId, messageId);
+        messagingTemplate.convertAndSend(WebSocketDestination.channel(message.getChannel().getId()), WebSocketEvent.of("MESSAGE_EDITED", MessageResponse.from(message)));
         return MessageResponse.from(message);
     }
 
@@ -80,8 +86,10 @@ public class SimpleMessageService implements MessageService {
         if (!message.isSentBy(user)) {
             throw new AuthException(ErrorCode.MESSAGE_DELETE_FORBIDDEN);
         }
+        long channelId = message.getChannel().getId();
         message.softDelete();
         log.info("[MESSAGE_DELETE] externalId={} messageId={}", externalId, messageId);
+        messagingTemplate.convertAndSend(WebSocketDestination.channel(channelId), WebSocketEvent.of("MESSAGE_DELETED", messageId));
     }
 
     @Override

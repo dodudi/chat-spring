@@ -2,6 +2,8 @@ package kr.it.rudy.chat.dm.application;
 
 import kr.it.rudy.chat.common.exception.AuthException;
 import kr.it.rudy.chat.common.exception.ErrorCode;
+import kr.it.rudy.chat.common.websocket.WebSocketDestination;
+import kr.it.rudy.chat.common.websocket.WebSocketEvent;
 import kr.it.rudy.chat.dm.domain.*;
 import kr.it.rudy.chat.dm.dto.*;
 import kr.it.rudy.chat.user.domain.User;
@@ -9,6 +11,7 @@ import kr.it.rudy.chat.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,7 @@ public class SimpleDmService implements DmService {
     private final DmMessageRepository messageRepository;
     private final DmReadStatusRepository readStatusRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -104,6 +108,8 @@ public class SimpleDmService implements DmService {
         }
         DmMessage message = messageRepository.save(DmMessage.create(channel, user, request.content(), parentMessage));
         log.info("[DM_MESSAGE_SEND] channelId={} senderId={} messageId={}", channelId, user.getId(), message.getId());
+        messagingTemplate.convertAndSend(WebSocketDestination.dm(channelId),
+                WebSocketEvent.of("MESSAGE_CREATED", DmMessageResponse.from(message)));
         return DmMessageResponse.from(message);
     }
 
@@ -129,6 +135,8 @@ public class SimpleDmService implements DmService {
         }
         message.edit(request.content());
         log.info("[DM_MESSAGE_EDIT] messageId={} userId={}", messageId, user.getId());
+        messagingTemplate.convertAndSend(WebSocketDestination.dm(message.getDmChannel().getId()),
+                WebSocketEvent.of("MESSAGE_EDITED", DmMessageResponse.from(message)));
         return DmMessageResponse.from(message);
     }
 
@@ -140,8 +148,11 @@ public class SimpleDmService implements DmService {
         if (!message.isSentBy(user)) {
             throw new AuthException(ErrorCode.DM_MESSAGE_DELETE_FORBIDDEN);
         }
+        long channelId = message.getDmChannel().getId();
         message.softDelete();
         log.info("[DM_MESSAGE_DELETE] messageId={} userId={}", messageId, user.getId());
+        messagingTemplate.convertAndSend(WebSocketDestination.dm(channelId),
+                WebSocketEvent.of("MESSAGE_DELETED", messageId));
     }
 
     @Override
