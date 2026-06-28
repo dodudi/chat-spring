@@ -18,6 +18,11 @@ public enum ErrorCode {
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "US001", "사용자를 찾을 수 없습니다."),
 
+    // Channel
+    CHANNEL_NOT_FOUND(HttpStatus.NOT_FOUND, "CH001", "채널을 찾을 수 없습니다."),
+    CHANNEL_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CH002", "채널 카테고리를 찾을 수 없습니다."),
+    CHANNEL_FORBIDDEN(HttpStatus.FORBIDDEN, "CH003", "채널을 수정할 권한이 없습니다."),
+
     // Server
     SERVER_NOT_FOUND(HttpStatus.NOT_FOUND, "SV001", "서버를 찾을 수 없습니다."),
     SERVER_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "SV002", "서버 멤버를 찾을 수 없습니다."),
