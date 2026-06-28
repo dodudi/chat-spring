@@ -18,6 +18,15 @@ public enum ErrorCode {
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "US001", "사용자를 찾을 수 없습니다."),
 
+    // Message
+    MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "MS001", "메시지를 찾을 수 없습니다."),
+    MESSAGE_EDIT_FORBIDDEN(HttpStatus.FORBIDDEN, "MS002", "메시지를 수정할 권한이 없습니다."),
+    MESSAGE_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN, "MS003", "메시지를 삭제할 권한이 없습니다."),
+    REACTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "MS004", "이미 추가한 반응입니다."),
+    REACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "MS005", "반응을 찾을 수 없습니다."),
+    PIN_ALREADY_EXISTS(HttpStatus.CONFLICT, "MS006", "이미 고정된 메시지입니다."),
+    PIN_NOT_FOUND(HttpStatus.NOT_FOUND, "MS007", "고정된 메시지를 찾을 수 없습니다."),
+
     // Channel
     CHANNEL_NOT_FOUND(HttpStatus.NOT_FOUND, "CH001", "채널을 찾을 수 없습니다."),
     CHANNEL_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "CH002", "채널 카테고리를 찾을 수 없습니다."),
