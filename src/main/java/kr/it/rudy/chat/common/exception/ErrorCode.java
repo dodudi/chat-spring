@@ -18,6 +18,14 @@ public enum ErrorCode {
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "US001", "사용자를 찾을 수 없습니다."),
 
+    // DM
+    DM_CHANNEL_NOT_FOUND(HttpStatus.NOT_FOUND, "DM001", "DM 채널을 찾을 수 없습니다."),
+    DM_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "DM002", "DM 채널 참여자가 아닙니다."),
+    DM_DIRECT_CANNOT_ADD_PARTICIPANT(HttpStatus.BAD_REQUEST, "DM003", "1:1 DM 채널에는 참여자를 추가할 수 없습니다."),
+    DM_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "DM004", "DM 메시지를 찾을 수 없습니다."),
+    DM_MESSAGE_EDIT_FORBIDDEN(HttpStatus.FORBIDDEN, "DM005", "DM 메시지를 수정할 권한이 없습니다."),
+    DM_MESSAGE_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN, "DM006", "DM 메시지를 삭제할 권한이 없습니다."),
+
     // Friend
     FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "FR001", "친구 요청을 찾을 수 없습니다."),
     FRIEND_REQUEST_ALREADY_EXISTS(HttpStatus.CONFLICT, "FR002", "이미 친구 요청이 존재합니다."),
