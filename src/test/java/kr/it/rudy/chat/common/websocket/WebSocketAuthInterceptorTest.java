@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -47,36 +48,28 @@ class WebSocketAuthInterceptorTest {
     }
 
     @Test
-    void preSend_Authorization_헤더_없이_CONNECT시_인증_설정_안함() {
+    void preSend_Authorization_헤더_없이_CONNECT시_예외_발생() {
         // given
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
         accessor.setLeaveMutable(true);
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
-        // when
-        Message<?> result = interceptor.preSend(message, mock(MessageChannel.class));
-
-        // then
-        StompHeaderAccessor resultAccessor = MessageHeaderAccessor.getAccessor(result, StompHeaderAccessor.class);
-        assertThat(resultAccessor).isNotNull();
-        assertThat(resultAccessor.getUser()).isNull();
+        // when & then
+        assertThatThrownBy(() -> interceptor.preSend(message, mock(MessageChannel.class)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void preSend_Bearer_접두사_없는_헤더는_인증_설정_안함() {
+    void preSend_Bearer_접두사_없는_헤더는_예외_발생() {
         // given
         StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.CONNECT);
         accessor.addNativeHeader("Authorization", "Basic dXNlcjpwYXNz");
         accessor.setLeaveMutable(true);
         Message<byte[]> message = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
 
-        // when
-        Message<?> result = interceptor.preSend(message, mock(MessageChannel.class));
-
-        // then
-        StompHeaderAccessor resultAccessor = MessageHeaderAccessor.getAccessor(result, StompHeaderAccessor.class);
-        assertThat(resultAccessor).isNotNull();
-        assertThat(resultAccessor.getUser()).isNull();
+        // when & then
+        assertThatThrownBy(() -> interceptor.preSend(message, mock(MessageChannel.class)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

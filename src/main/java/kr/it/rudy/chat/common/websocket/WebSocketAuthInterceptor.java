@@ -32,7 +32,7 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         }
         String authHeader = accessor.getFirstNativeHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return message;
+            throw new IllegalArgumentException("WebSocket 연결에 JWT 토큰이 필요합니다");
         }
         String token = authHeader.substring(7);
         Jwt jwt = jwtDecoder.decode(token);
