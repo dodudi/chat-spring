@@ -18,6 +18,11 @@ public enum ErrorCode {
     // User
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "US001", "사용자를 찾을 수 없습니다."),
 
+    // Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NT001", "알림을 찾을 수 없습니다."),
+    NOTIFICATION_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "NT002", "알림 설정을 찾을 수 없습니다."),
+    NOTIFICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "NT003", "알림을 처리할 권한이 없습니다."),
+
     // DM
     DM_CHANNEL_NOT_FOUND(HttpStatus.NOT_FOUND, "DM001", "DM 채널을 찾을 수 없습니다."),
     DM_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "DM002", "DM 채널 참여자가 아닙니다."),
