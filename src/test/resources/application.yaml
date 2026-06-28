@@ -1,0 +1,13 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://test-auth-server
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    out-of-order: true
+  autoconfigure:
+    exclude: org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration
